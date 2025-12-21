@@ -1,0 +1,133 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-dark-700;
+  }
+  
+  body {
+    @apply bg-dark-950 text-dark-100;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+  
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-dark-900;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-dark-600 rounded-full;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-dark-500;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-dark-900/50 backdrop-blur-sm border border-dark-800 rounded-xl p-6;
+  }
+  
+  .card-hover {
+    @apply transition-all duration-300 hover:border-netrum-500/30 hover:shadow-lg hover:shadow-netrum-500/5;
+  }
+  
+  .btn-primary {
+    @apply bg-netrum-500 hover:bg-netrum-600 text-white font-medium px-4 py-2 rounded-lg transition-all duration-200;
+  }
+  
+  .btn-secondary {
+    @apply bg-dark-800 hover:bg-dark-700 text-dark-100 font-medium px-4 py-2 rounded-lg border border-dark-700 transition-all duration-200;
+  }
+  
+  .input-field {
+    @apply w-full bg-dark-800 border border-dark-700 rounded-lg px-4 py-3 text-dark-100 placeholder-dark-500 focus:outline-none focus:border-netrum-500 focus:ring-1 focus:ring-netrum-500 transition-all duration-200;
+  }
+  
+  .stat-value {
+    @apply text-3xl font-bold font-display tracking-tight;
+  }
+  
+  .stat-label {
+    @apply text-sm text-dark-400 font-medium uppercase tracking-wider;
+  }
+  
+  .status-online {
+    @apply text-emerald-400;
+  }
+  
+  .status-offline {
+    @apply text-red-400;
+  }
+  
+  .status-syncing {
+    @apply text-amber-400;
+  }
+  
+  .status-cooldown {
+    @apply text-purple-400;
+  }
+  
+  .glow-orange {
+    box-shadow: 0 0 20px rgb(249 115 22 / 0.3), 0 0 40px rgb(249 115 22 / 0.1);
+  }
+  
+  .gradient-text {
+    @apply bg-gradient-to-r from-netrum-400 to-netrum-600 bg-clip-text text-transparent;
+  }
+}
+
+@layer utilities {
+  .animation-delay-100 {
+    animation-delay: 100ms;
+  }
+  
+  .animation-delay-200 {
+    animation-delay: 200ms;
+  }
+  
+  .animation-delay-300 {
+    animation-delay: 300ms;
+  }
+  
+  .animation-delay-400 {
+    animation-delay: 400ms;
+  }
+}
+
+/* Chart.js dark mode overrides */
+.chart-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+/* Pulse animation for live indicators */
+@keyframes live-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.live-indicator {
+  animation: live-pulse 2s ease-in-out infinite;
+}
+
+/* Grid background pattern */
+.grid-bg {
+  background-image: 
+    linear-gradient(to right, rgb(255 255 255 / 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(255 255 255 / 0.02) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
