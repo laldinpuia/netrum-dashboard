@@ -1,11 +1,12 @@
-# Netrum Node Public Endpoints Dashboard
+# Netrum AI Node Dashboard
 
 <div align="center">
 
 ![Netrum Dashboard](https://img.shields.io/badge/Netrum-Dashboard-orange?style=for-the-badge)
-![License](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)
-![Node.js](https://img.shields.io/badge/Node.js-20+-green?style=for-the-badge)
-![React](https://img.shields.io/badge/React-18-blue?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-1.0.9-blue?style=for-the-badge)
+![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)
+![Node.js](https://img.shields.io/badge/Node.js-20+-339933?style=for-the-badge&logo=node.js)
+![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react)
 
 **A real-time monitoring dashboard for Netrum Lite Nodes on Base Network**
 
@@ -15,42 +16,72 @@
 
 ---
 
-## Features
+## ✨ Features
 
-- **Real-time Node Monitoring** - Track node status, uptime, and sync state with live updates
-- **Mining Operations Dashboard** - View mining status, rate, cooldown timers, and total mined NPT
-- **Claim History & Analytics** - Interactive charts showing claim history and pending rewards
-- **Live Activity Log** - Real-time event stream with filtering capabilities
-- **Network Statistics** - Global network overview with total nodes and hash rate
-- **Smart Rate Limiting** - Server-side caching to comply with 30-second API limits
-- **Auto-refresh with Countdown** - Visual countdown timer with pause/resume controls
-- **Dark Mode UI** - Modern dark theme optimized for crypto dashboards
-- **Responsive Design** - Fully functional on desktop, tablet, and mobile
-- **Data Export** - Export claim history to CSV or JSON formats
+### Core Monitoring
+- **Real-time Node Monitoring** — Track node status, uptime, sync state with live updates every 69 seconds
+- **Mining Operations Dashboard** — View mining progress, session mined NPT, mining speed, and wallet balance
+- **Smart Contract Integration** — Direct integration with Netrum mining contract on Base Network
+- **Etherscan V2 API Integration** — Accurate claim history with on-chain verification
 
-## Tech Stack
+### Analytics & Visualization
+- **Performance Analytics** — Health score calculation, sync count, and uptime rate metrics
+- **Requirements Comparison** — Side-by-side view of minimum requirements vs actual system specs
+- **Claim History Tracking** — Complete transaction history with export capabilities
+- **Network Statistics** — Global overview of total nodes, active nodes, and network tasks
+
+### User Experience
+- **Dark/Light Mode** — Toggle between themes with persistent preference
+- **Responsive Design** — Fully functional on desktop, tablet, and mobile devices
+- **Auto-refresh with Timer** — Visual countdown with pause/resume controls
+- **PDF Export** — Generate professional reports with Netrum branding
+- **SEO Optimized** — Meta tags, Open Graph, Twitter Cards, and structured data
+
+### Technical Features
+- **Background Node Fetching** — Non-blocking API calls with intelligent caching
+- **Rate Limit Compliance** — Server-side caching to respect API limits
+- **Flexible Search** — Search by Node ID or Wallet Address
+- **Live Activity Log** — Real-time event stream with claim status indicators
+
+---
+
+## 🛠 Tech Stack
 
 ### Backend
-- **Node.js** - Runtime environment
-- **Express.js** - Web framework
-- **node-cache** - In-memory caching for rate limit compliance
-- **Server-Sent Events (SSE)** - Real-time updates
+| Technology | Purpose |
+|------------|---------|
+| Node.js 20+ | Runtime environment |
+| Express.js | Web framework |
+| node-cache | In-memory caching (60-300s TTL) |
+| ES Modules | Modern JavaScript imports |
 
 ### Frontend
-- **React 18** - UI framework
-- **Vite** - Build tool
-- **Tailwind CSS** - Styling
-- **Chart.js** - Data visualization
-- **Lucide React** - Icons
+| Technology | Purpose |
+|------------|---------|
+| React 18 | UI framework with hooks |
+| Vite | Build tool & dev server |
+| Tailwind CSS | Utility-first styling |
+| Lucide React | Icon library |
+| jsPDF | PDF generation |
+| html2canvas | Screenshot capture |
 
-## Quick Start
+### APIs
+| API | Usage |
+|-----|-------|
+| Netrum API | Node data, mining status, network stats |
+| Etherscan V2 | Token transfers, claim verification |
+| CoinGecko | ETH price for USD conversion |
+
+---
+
+## 🚀 Quick Start
 
 ### Prerequisites
 - Node.js 20+
 - npm or yarn
+- Git
 
 ### Installation
-
 ```bash
 # Clone the repository
 git clone https://github.com/laldinpuia/netrum-dashboard.git
@@ -63,145 +94,229 @@ npm install
 npm run dev
 ```
 
-This starts both the backend server (port 3001) and frontend dev server (port 5173).
+Development server runs on `http://localhost:5173` with API proxy to port 3001.
 
-### Production Build
-
+### Production Deployment
 ```bash
 # Build for production
 npm run build
 
 # Start production server
-NODE_ENV=production npm start
+npm start
 ```
 
-## Configuration
+### PM2 Deployment (Recommended)
+```bash
+# Install PM2 globally
+npm install -g pm2
 
-### Environment Variables
+# Start with PM2
+pm2 start server/index.js --name netrum-dashboard
 
-Create a `.env` file in the root directory:
-
-```env
-PORT=3001
-NODE_ENV=development
+# Enable startup persistence
+pm2 save
+pm2 startup
 ```
 
-### Default Node Configuration
+---
 
-Edit `src/App.jsx` to change default node/wallet:
+## 📡 API Endpoints
 
-```javascript
-const DEFAULT_NODE_ID = 'your-node-id.base.eth';
-const DEFAULT_WALLET = '0x...your-wallet-address';
-```
+| Endpoint | Method | Description | Cache |
+|----------|--------|-------------|-------|
+| `/api/stats` | GET | Network statistics | 5 min |
+| `/api/nodes/active` | GET | Active nodes list | 5 min |
+| `/api/node/:nodeId` | GET | Node details & metrics | 5 min |
+| `/api/mining/:nodeId` | GET | Mining status & contract data | 60s |
+| `/api/mining-debug/:wallet` | GET | Real-time mining debug info | 60s |
+| `/api/claim/:wallet/history` | GET | Claim history from Etherscan | 5 min |
+| `/api/tokens/:wallet` | GET | Token transfer data | 5 min |
+| `/api/health` | GET | Server health check | — |
 
-## API Endpoints
+---
 
-The dashboard proxies all Netrum API calls through the backend to handle caching and rate limiting.
-
-| Endpoint | Description |
-|----------|-------------|
-| `/api/stats` | Network statistics |
-| `/api/nodes/active` | List active nodes |
-| `/api/node/:nodeId` | Node information |
-| `/api/mining/:nodeId` | Mining status |
-| `/api/claim/:address/history` | Claim history |
-| `/api/dashboard/:nodeId/:address` | Aggregated dashboard data |
-
-## Deployment
-
-### DigitalOcean Droplet
-
-1. SSH into your server
-2. Clone the repository
-3. Install dependencies: `npm install`
-4. Build: `npm run build`
-5. Start with PM2: `pm2 start server/index.js --name netrum-dashboard`
-
-### Nginx Configuration
-
-```nginx
-server {
-    listen 443 ssl;
-    server_name yourdomain.com;
-
-    ssl_certificate /path/to/cert.pem;
-    ssl_certificate_key /path/to/key.pem;
-
-    location / {
-        proxy_pass http://localhost:3001;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-    }
-}
-```
-
-## Project Structure
-
+## 📁 Project Structure
 ```
 netrum-dashboard/
 ├── server/
-│   └── index.js          # Express backend with caching
+│   └── index.js              # Express backend with caching
 ├── src/
 │   ├── api/
-│   │   └── netrum.js     # API client functions
+│   │   └── netrum.js         # API client & utilities
 │   ├── components/
-│   │   ├── Header.jsx
-│   │   ├── NodeSearch.jsx
-│   │   ├── StatsGrid.jsx
-│   │   ├── NodeInfo.jsx
-│   │   ├── MiningStatus.jsx
-│   │   ├── ClaimHistory.jsx
-│   │   ├── LiveLog.jsx
-│   │   ├── NetworkStats.jsx
-│   │   ├── RefreshTimer.jsx
-│   │   └── Footer.jsx
-│   ├── App.jsx           # Main application
-│   ├── main.jsx          # Entry point
-│   └── index.css         # Global styles
-├── index.html
+│   │   ├── Header.jsx        # App header with theme toggle
+│   │   ├── NodeSearch.jsx    # Search input component
+│   │   ├── NetworkStats.jsx  # Global network overview
+│   │   ├── StatsGrid.jsx     # Quick stats cards
+│   │   ├── PerformanceChart.jsx  # Analytics & requirements
+│   │   ├── NodeInfo.jsx      # Node details & system metrics
+│   │   ├── MiningStatus.jsx  # Mining monitor & progress
+│   │   ├── ClaimHistory.jsx  # Transaction history table
+│   │   ├── LiveLog.jsx       # Activity feed
+│   │   ├── RefreshTimer.jsx  # Auto-refresh countdown
+│   │   └── Footer.jsx        # Credits & social links
+│   ├── App.jsx               # Main application logic
+│   ├── main.jsx              # React entry point
+│   └── index.css             # Global styles & Tailwind
+├── public/
+│   ├── logo.png              # Netrum logo
+│   └── netrum-logo.svg       # SVG variant
+├── index.html                # HTML template with SEO
 ├── package.json
 ├── vite.config.js
 ├── tailwind.config.js
 └── README.md
 ```
 
-## Netrum Developer Challenge
+---
 
-This dashboard was built for the **Netrum Developer Tasks** competition with a **4,000 NPT token prize pool**.
+## 📋 Changelog
 
-### Evaluation Criteria
-- Functionality - All endpoints properly integrated
-- User Experience - Intuitive interface and navigation
-- Design Quality - Clean, modern, responsive design
-- Rate Limit Compliance - Proper 30-second intervals
-- Error Handling - Graceful error messages
-- Performance - Fast loading and efficient data fetching
-- Innovation - Creative features and visualizations
+### v1.0.9 (Current)
+**API Architecture Overhaul & Performance Optimization**
+- Migrated to new Netrum API structure (`/nodes?limit=2000` endpoint)
+- Implemented background node fetching with 5-minute cache
+- Added graceful fallbacks for API failures
+- Increased refresh interval to 69 seconds for rate limit compliance
+- Enhanced timeout handling (30-60 second timeouts)
 
-## Contributing
+**UI/UX Improvements**
+- Redesigned Requirements Status with dual-box layout (Min Requirements + Actual Specs)
+- Added TTS Power status indicator to System Metrics
+- Fixed Mining Monitor timestamp labels
+- Updated Live Activity Log with "First Mining Started" event
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+**SEO Implementation**
+- Added comprehensive meta tags (description, keywords, author)
+- Implemented Open Graph tags for social sharing
+- Added Twitter Card support
+- Included JSON-LD structured data
+- Added canonical URL and theme color
 
-## License
+### v1.0.8
+**Mining Debug Integration**
+- Integrated `/mining/debug/contract/{wallet}` API for real-time mining data
+- Added session mined NPT tracking
+- Implemented mining speed display (NPT/sec)
+- Added wallet balance with USD conversion via CoinGecko API
+
+### v1.0.7
+**Etherscan V2 Integration & Data Accuracy**
+- Migrated claim history to Etherscan V2 API for on-chain verification
+- Implemented accurate total NPT claimed calculation
+- Added total claims counter from blockchain data
+- Standardized date format to DD/MM/YYYY across all components
+- Added Requirements Status icons (PASS/FAIL indicators)
+
+### v1.0.6
+**Mining Monitor Component**
+- New dedicated Mining Monitor card with progress bar
+- Real-time mining progress percentage (24h cycle)
+- Session mined display with pending rewards
+- Mining speed calculation and display
+- Status indicators (Active/Inactive/Cooldown)
+
+### v1.0.5
+**PDF Export Enhancement**
+- Integrated Netrum logo in PDF header
+- Professional two-column card layout
+- Color-coded sections matching dashboard theme
+- Full-width cards for Requirements and Sync History
+- Custom footer with branding
+
+### v1.0.4
+**Performance Charts & Analytics**
+- Added Health Score calculation algorithm
+- Implemented Total Syncs counter
+- Added Uptime Rate percentage
+- Recent Activity feed with event types
+- Requirements comparison table
+
+### v1.0.3
+**Theme & Export Features**
+- Dark/Light mode toggle with localStorage persistence
+- Flexible search (Node ID or Wallet Address)
+- PDF export functionality with jsPDF
+- CSV/JSON export for claim history
+- RefreshTimer component with pause/resume
+
+### v1.0.2
+**UI Refinements**
+- Improved card layouts and spacing
+- Enhanced mobile responsiveness
+- Added loading states and skeletons
+- Error handling with user feedback
+- Copy to clipboard for addresses
+
+### v1.0.1
+**Initial Release**
+- Core dashboard layout and components
+- Node information display
+- Basic mining status
+- Claim history table
+- Network statistics overview
+- Auto-refresh functionality
+
+---
+
+## 🔧 Configuration
+
+### Environment Variables
+```env
+PORT=3001
+NODE_ENV=production
+```
+
+### Customization
+
+Edit `src/App.jsx` to modify default behavior:
+```javascript
+// Default refresh interval (seconds)
+const REFRESH_INTERVAL = 69;
+
+// Cache durations in server/index.js
+const CACHE_TTL = {
+  nodes: 300,      // 5 minutes
+  mining: 60,      // 1 minute
+  tokens: 300      // 5 minutes
+};
+```
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please follow these steps:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+---
+
+## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Author
+---
 
-**Dipy (BlockClaimed)**
-- Twitter: [@BlockClaimed](https://twitter.com/BlockClaimed)
-- GitHub: [@laldinpuia](https://github.com/laldinpuia)
+## 👤 Author
+
+**D.i.PY™**
+
+| Platform | Link |
+|----------|------|
+| 𝕏 (Twitter) | [@BlockClaimed](https://twitter.com/BlockClaimed) |
+| GitHub | [@laldinpuia](https://github.com/laldinpuia) |
+| Discord | [@d.i.py](https://discord.com/users/403450851202695169) |
+| Telegram | [dipy_tuallawt](https://t.me/dipy_tuallawt) |
 
 ---
 
 <div align="center">
 
-Built with ❤️ for the Netrum Community
-
-**[Netrum Labs](https://netrumlabs.com)** | **[Base Network](https://base.org)**
+**[Live Dashboard](https://dipy.me)** • **[Netrum Labs](https://netrumlabs.com)** • **[Base Network](https://base.org)**
 
 </div>

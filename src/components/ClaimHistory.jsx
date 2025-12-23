@@ -1,233 +1,154 @@
-import React, { useMemo } from 'react';
-import { Line } from 'react-chartjs-2';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-} from 'chart.js';
-import { Coins, History, Download, ExternalLink } from 'lucide-react';
-import { exportToCSV, exportToJSON } from '../api/netrum';
+import React, { useState } from 'react';
+import { History, Download, FileJson, FileSpreadsheet, FileText, ChevronDown, Coins, Calendar } from 'lucide-react';
+import { useTheme } from '../App';
+import { exportToCSV, exportToJSON, exportToPDF, formatDateDMY, formatDateTimeDMY, formatTimestampDMY, fetchEthPrice } from '../api/netrum';
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-);
-
-function ClaimHistory({ claimStatus, claimHistory }) {
-  const claims = claimHistory?.claims || claimHistory?.history || [];
+function ClaimHistory(props) {
+  var claimHistory = props.claimHistory;
+  var nodeInfo = props.nodeInfo;
+  var miningStatus = props.miningStatus;
+  var tokenData = props.tokenData;
+  var theme = useTheme().theme;
+  var isDark = theme === 'dark';
+  var [showExportMenu, setShowExportMenu] = useState(false);
   
-  const chartData = useMemo(() => {
-    if (!claims.length) return null;
-    
-    const sortedClaims = [...claims].sort((a, b) => 
-      new Date(a.timestamp || a.created_at) - new Date(b.timestamp || b.created_at)
-    );
-    
-    return {
-      labels: sortedClaims.map(c => 
-        new Date(c.timestamp || c.created_at).toLocaleDateString('en-US', { 
-          month: 'short', 
-          day: 'numeric' 
-        })
-      ),
-      datasets: [
-        {
-          label: 'NPT Claimed',
-          data: sortedClaims.map(c => parseFloat(c.amount || c.value || 0)),
-          borderColor: 'rgb(249, 115, 22)',
-          backgroundColor: 'rgba(249, 115, 22, 0.1)',
-          fill: true,
-          tension: 0.4,
-          pointBackgroundColor: 'rgb(249, 115, 22)',
-          pointBorderColor: 'rgb(249, 115, 22)',
-          pointHoverBackgroundColor: '#fff',
-          pointHoverBorderColor: 'rgb(249, 115, 22)',
-          pointRadius: 4,
-          pointHoverRadius: 6,
-        }
-      ]
+  var history = claimHistory || {};
+  var node = nodeInfo && nodeInfo.node ? nodeInfo.node : {};
+  var totalClaims = tokenData && tokenData.totalClaims ? tokenData.totalClaims : (history.totalClaims || 0);
+  var lastClaim = history.lastClaim || {};
+  var recentClaims = tokenData && tokenData.recentClaims ? tokenData.recentClaims : [];
+
+  var handleExport = async function(format) {
+    var ethPrice = await fetchEthPrice();
+    var exportData = {
+      nodeId: node.nodeId || lastClaim.nodeId || history.nodeAddress,
+      totalClaims: totalClaims,
+      totalNptClaimed: tokenData ? tokenData.totalNptClaimed : 0,
+      lastClaim: lastClaim,
+      nodeInfo: {
+        wallet: node.wallet,
+        status: node.nodeStatus,
+        taskCount: node.taskCount,
+        syncCount: node.syncCount,
+        createdAt: node.createdAt
+      },
+      exportedAt: new Date().toISOString()
     };
-  }, [claims]);
-
-  const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        display: false
-      },
-      tooltip: {
-        backgroundColor: 'rgba(15, 23, 42, 0.9)',
-        titleColor: '#fff',
-        bodyColor: '#94a3b8',
-        borderColor: 'rgba(249, 115, 22, 0.3)',
-        borderWidth: 1,
-        cornerRadius: 8,
-        padding: 12,
-        callbacks: {
-          label: (context) => `${context.parsed.y.toFixed(4)} NPT`
-        }
-      }
-    },
-    scales: {
-      x: {
-        grid: {
-          color: 'rgba(255, 255, 255, 0.05)',
-          drawBorder: false
-        },
-        ticks: {
-          color: '#64748b',
-          font: { size: 11 }
-        }
-      },
-      y: {
-        grid: {
-          color: 'rgba(255, 255, 255, 0.05)',
-          drawBorder: false
-        },
-        ticks: {
-          color: '#64748b',
-          font: { size: 11 },
-          callback: (value) => `${value} NPT`
-        }
-      }
-    },
-    interaction: {
-      intersect: false,
-      mode: 'index'
-    }
-  };
-
-  const handleExport = (format) => {
-    if (!claims.length) return;
-    
-    const exportData = claims.map(c => ({
-      date: c.timestamp || c.created_at,
-      amount: c.amount || c.value,
-      txHash: c.tx_hash || c.txHash,
-      block: c.block_number || c.block
-    }));
 
     if (format === 'csv') {
-      exportToCSV(exportData, 'netrum-claim-history');
-    } else {
+      var csvData = recentClaims.length > 0 ? recentClaims.map(function(tx) {
+        return {
+          date: formatTimestampDMY(tx.timeStamp),
+          amount: (parseFloat(tx.value) / 1e18).toFixed(4) + ' NPT',
+          txHash: tx.hash,
+          block: tx.blockNumber
+        };
+      }) : [{
+        nodeId: exportData.nodeId,
+        totalClaims: exportData.totalClaims,
+        totalNptClaimed: exportData.totalNptClaimed,
+        lastClaimDate: formatDateTimeDMY(lastClaim.timestamp),
+        lastClaimNodeId: lastClaim.nodeId
+      }];
+      exportToCSV(csvData, 'netrum-claim-history');
+    } else if (format === 'json') {
       exportToJSON(exportData, 'netrum-claim-history');
+    } else if (format === 'pdf') {
+      exportToPDF(exportData, node, miningStatus, ethPrice, 'netrum-node-report');
     }
+    
+    setShowExportMenu(false);
   };
 
-  return (
-    <div className="card card-hover">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div className="p-3 rounded-xl bg-netrum-500/10 border border-netrum-500/30">
-            <History className="w-5 h-5 text-netrum-400" />
-          </div>
-          <div>
-            <h3 className="font-display font-semibold text-white">Claim History</h3>
-            <p className="text-sm text-dark-400">{claims.length} claims recorded</p>
-          </div>
-        </div>
+  var latestClaim = recentClaims.length > 0 ? recentClaims[0] : null;
 
-        {/* Export Buttons */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => handleExport('csv')}
-            className="p-2 hover:bg-dark-700 rounded-lg transition-colors"
-            title="Export CSV"
-          >
-            <Download className="w-4 h-4 text-dark-400 hover:text-netrum-400" />
-          </button>
-        </div>
-      </div>
+  return React.createElement('div', { className: isDark ? 'card card-hover' : 'card card-hover bg-white border-gray-200' },
+    React.createElement('div', { className: 'flex items-center justify-between mb-6' },
+      React.createElement('div', { className: 'flex items-center gap-3' },
+        React.createElement('div', { className: 'p-3 rounded-xl bg-netrum-500/10 border border-netrum-500/30' },
+          React.createElement(History, { className: 'w-5 h-5 text-netrum-400' })
+        ),
+        React.createElement('div', null,
+          React.createElement('h3', { className: isDark ? 'font-display font-semibold text-white' : 'font-display font-semibold text-gray-900' }, 'Claim History'),
+          React.createElement('p', { className: isDark ? 'text-sm text-dark-400' : 'text-sm text-gray-500' }, totalClaims + ' claims recorded')
+        )
+      ),
+      React.createElement('div', { className: 'relative' },
+        React.createElement('button', { onClick: function() { setShowExportMenu(!showExportMenu); }, className: isDark ? 'flex items-center gap-2 px-3 py-2 bg-dark-800 hover:bg-dark-700 rounded-lg transition-colors text-sm text-white' : 'flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors text-sm text-gray-700' },
+          React.createElement(Download, { className: 'w-4 h-4' }),
+          'Export',
+          React.createElement(ChevronDown, { className: 'w-3 h-3' })
+        ),
+        showExportMenu && React.createElement('div', { className: isDark ? 'absolute right-0 mt-2 w-48 bg-dark-800 border-dark-700 border rounded-lg shadow-xl z-10' : 'absolute right-0 mt-2 w-48 bg-white border-gray-200 border rounded-lg shadow-xl z-10' },
+          React.createElement('button', { onClick: function() { handleExport('csv'); }, className: isDark ? 'w-full flex items-center gap-3 px-4 py-3 hover:bg-dark-700 transition-colors text-left' : 'w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left' },
+            React.createElement(FileSpreadsheet, { className: 'w-4 h-4 text-emerald-400' }),
+            React.createElement('span', { className: isDark ? 'text-sm text-dark-200' : 'text-sm text-gray-700' }, 'Export CSV')
+          ),
+          React.createElement('button', { onClick: function() { handleExport('json'); }, className: isDark ? 'w-full flex items-center gap-3 px-4 py-3 hover:bg-dark-700 transition-colors text-left' : 'w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left' },
+            React.createElement(FileJson, { className: 'w-4 h-4 text-blue-400' }),
+            React.createElement('span', { className: isDark ? 'text-sm text-dark-200' : 'text-sm text-gray-700' }, 'Export JSON')
+          ),
+          React.createElement('button', { onClick: function() { handleExport('pdf'); }, className: isDark ? 'w-full flex items-center gap-3 px-4 py-3 hover:bg-dark-700 transition-colors text-left' : 'w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left' },
+            React.createElement(FileText, { className: 'w-4 h-4 text-red-400' }),
+            React.createElement('span', { className: isDark ? 'text-sm text-dark-200' : 'text-sm text-gray-700' }, 'Export PDF')
+          )
+        )
+      )
+    ),
 
-      {/* Claim Status Summary */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <div className="bg-dark-800/50 rounded-xl p-4">
-          <div className="flex items-center gap-2 text-dark-400 mb-2">
-            <Coins className="w-4 h-4" />
-            <span className="text-xs uppercase tracking-wider">Pending</span>
-          </div>
-          <p className="text-xl font-display font-bold text-netrum-400">
-            {parseFloat(claimStatus?.pending || claimStatus?.claimable || 0).toFixed(4)}
-          </p>
-          <p className="text-xs text-dark-400 mt-1">NPT available</p>
-        </div>
+    React.createElement('div', { className: 'grid grid-cols-2 gap-4 mb-6' },
+      React.createElement('div', { className: isDark ? 'bg-dark-800/50 rounded-xl p-4' : 'bg-gray-50 rounded-xl p-4' },
+        React.createElement('div', { className: isDark ? 'flex items-center gap-2 text-dark-400 mb-2' : 'flex items-center gap-2 text-gray-500 mb-2' },
+          React.createElement(Coins, { className: 'w-4 h-4' }),
+          React.createElement('span', { className: 'text-xs uppercase tracking-wider' }, 'Total Claims')
+        ),
+        React.createElement('p', { className: 'text-2xl font-display font-bold text-netrum-400' }, totalClaims)
+      ),
+      React.createElement('div', { className: isDark ? 'bg-dark-800/50 rounded-xl p-4' : 'bg-gray-50 rounded-xl p-4' },
+        React.createElement('div', { className: isDark ? 'flex items-center gap-2 text-dark-400 mb-2' : 'flex items-center gap-2 text-gray-500 mb-2' },
+          React.createElement(Calendar, { className: 'w-4 h-4' }),
+          React.createElement('span', { className: 'text-xs uppercase tracking-wider' }, 'Last Claim')
+        ),
+        React.createElement('p', { className: isDark ? 'text-lg font-display font-bold text-white' : 'text-lg font-display font-bold text-gray-900' },
+          latestClaim ? formatTimestampDMY(latestClaim.timeStamp).split(',')[0] : formatDateDMY(lastClaim.timestamp)
+        )
+      )
+    ),
 
-        <div className="bg-dark-800/50 rounded-xl p-4">
-          <div className="flex items-center gap-2 text-dark-400 mb-2">
-            <History className="w-4 h-4" />
-            <span className="text-xs uppercase tracking-wider">Total Claimed</span>
-          </div>
-          <p className="text-xl font-display font-bold text-white">
-            {parseFloat(claimStatus?.total_claimed || claimStatus?.totalClaimed || 0).toFixed(2)}
-          </p>
-          <p className="text-xs text-dark-400 mt-1">NPT lifetime</p>
-        </div>
-      </div>
+    (latestClaim || lastClaim.timestamp) && React.createElement('div', { className: isDark ? 'bg-dark-800/30 rounded-xl p-4' : 'bg-gray-50 rounded-xl p-4' },
+      React.createElement('h4', { className: isDark ? 'text-sm font-medium text-dark-300 mb-3' : 'text-sm font-medium text-gray-600 mb-3' }, 'Last Claim Details'),
+      React.createElement('div', { className: 'space-y-2' },
+        React.createElement('div', { className: 'flex justify-between' },
+          React.createElement('span', { className: isDark ? 'text-sm text-dark-400' : 'text-sm text-gray-500' }, 'Date & Time'),
+          React.createElement('span', { className: isDark ? 'text-sm font-mono text-white' : 'text-sm font-mono text-gray-900' },
+            latestClaim ? formatTimestampDMY(latestClaim.timeStamp) : formatDateTimeDMY(lastClaim.timestamp)
+          )
+        ),
+        React.createElement('div', { className: 'flex justify-between' },
+          React.createElement('span', { className: isDark ? 'text-sm text-dark-400' : 'text-sm text-gray-500' }, 'Node ID'),
+          React.createElement('span', { className: isDark ? 'text-sm font-mono text-white' : 'text-sm font-mono text-gray-900' },
+            lastClaim.nodeId || node.nodeId || '--'
+          )
+        ),
+        latestClaim && React.createElement('div', { className: 'flex justify-between' },
+          React.createElement('span', { className: isDark ? 'text-sm text-dark-400' : 'text-sm text-gray-500' }, 'Amount'),
+          React.createElement('span', { className: 'text-sm font-mono text-netrum-400' },
+            (parseFloat(latestClaim.value) / 1e18).toFixed(4) + ' NPT'
+          )
+        ),
+        lastClaim.taskCountAtTime && React.createElement('div', { className: 'flex justify-between' },
+          React.createElement('span', { className: isDark ? 'text-sm text-dark-400' : 'text-sm text-gray-500' }, 'Tasks at Claim'),
+          React.createElement('span', { className: isDark ? 'text-sm font-mono text-white' : 'text-sm font-mono text-gray-900' },
+            lastClaim.taskCountAtTime.toLocaleString()
+          )
+        )
+      )
+    ),
 
-      {/* Chart */}
-      {chartData ? (
-        <div className="h-48 mb-4">
-          <Line data={chartData} options={chartOptions} />
-        </div>
-      ) : (
-        <div className="h-48 flex items-center justify-center bg-dark-800/30 rounded-xl mb-4">
-          <p className="text-dark-400 text-sm">No claim history available</p>
-        </div>
-      )}
-
-      {/* Recent Claims List */}
-      {claims.length > 0 && (
-        <div className="border-t border-dark-800 pt-4">
-          <h4 className="text-sm font-medium text-dark-300 mb-3">Recent Claims</h4>
-          <div className="space-y-2 max-h-40 overflow-y-auto">
-            {claims.slice(0, 5).map((claim, index) => (
-              <div 
-                key={index}
-                className="flex items-center justify-between py-2 px-3 bg-dark-800/30 rounded-lg"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-netrum-500/10 flex items-center justify-center">
-                    <Coins className="w-4 h-4 text-netrum-400" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-white">
-                      +{parseFloat(claim.amount || claim.value || 0).toFixed(4)} NPT
-                    </p>
-                    <p className="text-xs text-dark-400">
-                      {new Date(claim.timestamp || claim.created_at).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
-                {(claim.tx_hash || claim.txHash) && (
-                  <a
-                    href={`https://basescan.org/tx/${claim.tx_hash || claim.txHash}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-1.5 hover:bg-dark-700 rounded transition-colors"
-                    title="View on BaseScan"
-                  >
-                    <ExternalLink className="w-4 h-4 text-dark-400 hover:text-netrum-400" />
-                  </a>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
+    !latestClaim && !lastClaim.timestamp && React.createElement('div', { className: isDark ? 'text-center py-8 text-dark-400' : 'text-center py-8 text-gray-500' },
+      React.createElement(History, { className: 'w-12 h-12 mx-auto mb-3 opacity-30' }),
+      React.createElement('p', null, 'No claim history available')
+    )
   );
 }
 

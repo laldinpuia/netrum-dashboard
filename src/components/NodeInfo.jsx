@@ -1,161 +1,152 @@
 import React from 'react';
-import { Server, Hash, Wallet, Calendar, CheckCircle, XCircle, Copy, ExternalLink } from 'lucide-react';
+import { Server, Hash, Wallet, Calendar, CheckCircle, XCircle, Cpu, MemoryStick, HardDrive, Download, Upload, Zap, Copy, ExternalLink } from 'lucide-react';
+import { useTheme } from '../App';
+import { formatDateDMY } from '../api/netrum';
 
-function NodeInfo({ nodeInfo, metricsStatus }) {
+function NodeInfo({ nodeInfo }) {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  const node = nodeInfo && nodeInfo.node ? nodeInfo.node : {};
+  const metrics = node.nodeMetrics || {};
+
+  const isActive = node.nodeStatus === 'Active';
+
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
   };
 
   const truncateAddress = (address) => {
     if (!address) return '--';
-    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+    return address.slice(0, 6) + '...' + address.slice(-4);
   };
 
-  const isOnline = nodeInfo?.status === 'active' || nodeInfo?.is_active || metricsStatus?.status === 'online';
-
   return (
-    <div className="card card-hover">
+    <div className={isDark ? 'card card-hover' : 'card card-hover bg-white border-gray-200'}>
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <div className="p-3 rounded-xl bg-netrum-500/10 border border-netrum-500/30">
-            <Server className="w-5 h-5 text-netrum-400" />
+          <div className={isActive ? 'p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30' : isDark ? 'p-3 rounded-xl bg-dark-700 border border-dark-600' : 'p-3 rounded-xl bg-gray-100 border border-gray-200'}>
+            <Server className={isActive ? 'w-5 h-5 text-emerald-400' : isDark ? 'w-5 h-5 text-dark-400' : 'w-5 h-5 text-gray-400'} />
           </div>
           <div>
-            <h3 className="font-display font-semibold text-white">Node Information</h3>
-            <p className="text-sm text-dark-400">Basic node details</p>
+            <h3 className={isDark ? 'font-display font-semibold text-white' : 'font-display font-semibold text-gray-900'}>Node Information</h3>
+            <p className={isDark ? 'text-sm text-dark-400' : 'text-sm text-gray-500'}>Basic node details</p>
           </div>
         </div>
-        
-        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${
-          isOnline 
-            ? 'bg-emerald-500/10 border border-emerald-500/30' 
-            : 'bg-red-500/10 border border-red-500/30'
-        }`}>
-          {isOnline ? (
-            <>
-              <div className="w-2 h-2 bg-emerald-400 rounded-full live-indicator" />
-              <span className="text-xs font-medium text-emerald-400">Online</span>
-            </>
-          ) : (
-            <>
-              <XCircle className="w-3 h-3 text-red-400" />
-              <span className="text-xs font-medium text-red-400">Offline</span>
-            </>
-          )}
+        <div className={isActive ? 'flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-full' : 'flex items-center gap-2 px-3 py-1.5 bg-red-500/10 border border-red-500/30 rounded-full'}>
+          {isActive ? <CheckCircle className="w-3 h-3 text-emerald-400" /> : <XCircle className="w-3 h-3 text-red-400" />}
+          <span className={isActive ? 'text-xs font-medium text-emerald-400' : 'text-xs font-medium text-red-400'}>{isActive ? 'Online' : 'Offline'}</span>
         </div>
       </div>
 
       <div className="space-y-4">
-        {/* Node ID */}
-        <InfoRow
-          icon={Hash}
-          label="Node ID"
-          value={nodeInfo?.node_id || nodeInfo?.id || '--'}
-          copyable
-          onCopy={copyToClipboard}
-          mono
-        />
-
-        {/* Wallet Address */}
-        <InfoRow
-          icon={Wallet}
-          label="Wallet Address"
-          value={nodeInfo?.wallet || nodeInfo?.owner || '--'}
-          displayValue={truncateAddress(nodeInfo?.wallet || nodeInfo?.owner)}
-          copyable
-          onCopy={copyToClipboard}
-          mono
-          link={nodeInfo?.wallet ? `https://basescan.org/address/${nodeInfo.wallet}` : null}
-        />
-
-        {/* Registration Date */}
-        <InfoRow
-          icon={Calendar}
-          label="Registered"
-          value={nodeInfo?.created_at || nodeInfo?.registered_at ? 
-            new Date(nodeInfo.created_at || nodeInfo.registered_at).toLocaleDateString() : 
-            '--'
-          }
-        />
-
-        {/* Verification Status */}
-        <InfoRow
-          icon={CheckCircle}
-          label="Verified"
-          value={nodeInfo?.is_verified ? 'Yes' : 'No'}
-          highlight={nodeInfo?.is_verified}
-        />
-      </div>
-
-      {/* Metrics Status */}
-      {metricsStatus && (
-        <div className="mt-6 pt-6 border-t border-dark-800">
-          <h4 className="text-sm font-medium text-dark-300 mb-4">System Metrics</h4>
-          <div className="grid grid-cols-2 gap-4">
-            <MetricItem 
-              label="CPU Usage" 
-              value={metricsStatus.cpu_usage ? `${metricsStatus.cpu_usage}%` : '--'} 
-            />
-            <MetricItem 
-              label="Memory" 
-              value={metricsStatus.memory_usage ? `${metricsStatus.memory_usage}%` : '--'} 
-            />
-            <MetricItem 
-              label="Disk" 
-              value={metricsStatus.disk_usage ? `${metricsStatus.disk_usage}%` : '--'} 
-            />
-            <MetricItem 
-              label="Block Height" 
-              value={metricsStatus.block_height || '--'} 
-            />
+        <div className={isDark ? 'flex items-center justify-between py-3 border-b border-dark-800' : 'flex items-center justify-between py-3 border-b border-gray-100'}>
+          <div className="flex items-center gap-3">
+            <Hash className={isDark ? 'w-4 h-4 text-dark-400' : 'w-4 h-4 text-gray-400'} />
+            <span className={isDark ? 'text-sm text-dark-400' : 'text-sm text-gray-500'}>Node ID</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className={isDark ? 'text-sm font-mono text-white' : 'text-sm font-mono text-gray-900'}>{node.nodeId || '--'}</span>
+            {node.nodeId && (
+              <button onClick={() => copyToClipboard(node.nodeId)} className={isDark ? 'p-1 hover:bg-dark-700 rounded' : 'p-1 hover:bg-gray-100 rounded'}>
+                <Copy className="w-3 h-3 text-dark-400" />
+              </button>
+            )}
           </div>
         </div>
-      )}
-    </div>
-  );
-}
 
-function InfoRow({ icon: Icon, label, value, displayValue, copyable, onCopy, mono, link, highlight }) {
-  return (
-    <div className="flex items-center justify-between py-2 border-b border-dark-800/50 last:border-0">
-      <div className="flex items-center gap-2 text-dark-400">
-        <Icon className="w-4 h-4" />
-        <span className="text-sm">{label}</span>
-      </div>
-      <div className="flex items-center gap-2">
-        <span className={`text-sm ${mono ? 'font-mono' : ''} ${highlight ? 'text-emerald-400' : 'text-white'}`}>
-          {displayValue || value}
-        </span>
-        {copyable && value && value !== '--' && (
-          <button
-            onClick={() => onCopy(value)}
-            className="p-1 hover:bg-dark-700 rounded transition-colors"
-            title="Copy to clipboard"
-          >
-            <Copy className="w-3 h-3 text-dark-400 hover:text-netrum-400" />
-          </button>
-        )}
-        {link && (
-          <a
-            href={link}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="p-1 hover:bg-dark-700 rounded transition-colors"
-            title="View on BaseScan"
-          >
-            <ExternalLink className="w-3 h-3 text-dark-400 hover:text-netrum-400" />
-          </a>
-        )}
-      </div>
-    </div>
-  );
-}
+        <div className={isDark ? 'flex items-center justify-between py-3 border-b border-dark-800' : 'flex items-center justify-between py-3 border-b border-gray-100'}>
+          <div className="flex items-center gap-3">
+            <Wallet className={isDark ? 'w-4 h-4 text-dark-400' : 'w-4 h-4 text-gray-400'} />
+            <span className={isDark ? 'text-sm text-dark-400' : 'text-sm text-gray-500'}>Wallet Address</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className={isDark ? 'text-sm font-mono text-white' : 'text-sm font-mono text-gray-900'}>{truncateAddress(node.wallet)}</span>
+            {node.wallet && (
+              <>
+                <button onClick={() => copyToClipboard(node.wallet)} className={isDark ? 'p-1 hover:bg-dark-700 rounded' : 'p-1 hover:bg-gray-100 rounded'}>
+                  <Copy className="w-3 h-3 text-dark-400" />
+                </button>
+                <a href={'https://basescan.org/address/' + node.wallet} target="_blank" rel="noopener noreferrer" className={isDark ? 'p-1 hover:bg-dark-700 rounded' : 'p-1 hover:bg-gray-100 rounded'}>
+                  <ExternalLink className="w-3 h-3 text-dark-400" />
+                </a>
+              </>
+            )}
+          </div>
+        </div>
 
-function MetricItem({ label, value }) {
-  return (
-    <div className="bg-dark-800/50 rounded-lg p-3">
-      <p className="text-xs text-dark-400 mb-1">{label}</p>
-      <p className="text-sm font-mono font-medium text-white">{value}</p>
+        <div className={isDark ? 'flex items-center justify-between py-3 border-b border-dark-800' : 'flex items-center justify-between py-3 border-b border-gray-100'}>
+          <div className="flex items-center gap-3">
+            <Calendar className={isDark ? 'w-4 h-4 text-dark-400' : 'w-4 h-4 text-gray-400'} />
+            <span className={isDark ? 'text-sm text-dark-400' : 'text-sm text-gray-500'}>Registered</span>
+          </div>
+          <span className={isDark ? 'text-sm font-mono text-white' : 'text-sm font-mono text-gray-900'}>{formatDateDMY(node.createdAt)}</span>
+        </div>
+
+        <div className={isDark ? 'flex items-center justify-between py-3 border-b border-dark-800' : 'flex items-center justify-between py-3 border-b border-gray-100'}>
+          <div className="flex items-center gap-3">
+            <CheckCircle className={isDark ? 'w-4 h-4 text-dark-400' : 'w-4 h-4 text-gray-400'} />
+            <span className={isDark ? 'text-sm text-dark-400' : 'text-sm text-gray-500'}>Status</span>
+          </div>
+          <span className={isActive ? 'text-sm font-medium text-emerald-400' : 'text-sm font-medium text-red-400'}>{node.nodeStatus || '--'}</span>
+        </div>
+      </div>
+
+      <div className={isDark ? 'mt-6 pt-4 border-t border-dark-800' : 'mt-6 pt-4 border-t border-gray-200'}>
+        <h4 className={isDark ? 'text-sm font-medium text-dark-300 mb-4' : 'text-sm font-medium text-gray-600 mb-4'}>System Metrics</h4>
+        <div className="grid grid-cols-2 gap-3">
+          <div className={isDark ? 'bg-dark-800/50 rounded-lg p-3' : 'bg-gray-50 rounded-lg p-3'}>
+            <div className={isDark ? 'flex items-center gap-2 text-dark-400 mb-1' : 'flex items-center gap-2 text-gray-500 mb-1'}>
+              <Cpu className="w-3 h-3" />
+              <span className="text-xs">CPU Cores</span>
+            </div>
+            <p className={isDark ? 'text-lg font-semibold text-white' : 'text-lg font-semibold text-gray-900'}>{metrics.cpu || '--'}</p>
+          </div>
+          <div className={isDark ? 'bg-dark-800/50 rounded-lg p-3' : 'bg-gray-50 rounded-lg p-3'}>
+            <div className={isDark ? 'flex items-center gap-2 text-dark-400 mb-1' : 'flex items-center gap-2 text-gray-500 mb-1'}>
+              <MemoryStick className="w-3 h-3" />
+              <span className="text-xs">RAM</span>
+            </div>
+            <p className={isDark ? 'text-lg font-semibold text-white' : 'text-lg font-semibold text-gray-900'}>{metrics.ram ? (metrics.ram / 1024).toFixed(1) + ' GB' : '--'}</p>
+          </div>
+          <div className={isDark ? 'bg-dark-800/50 rounded-lg p-3' : 'bg-gray-50 rounded-lg p-3'}>
+            <div className={isDark ? 'flex items-center gap-2 text-dark-400 mb-1' : 'flex items-center gap-2 text-gray-500 mb-1'}>
+              <HardDrive className="w-3 h-3" />
+              <span className="text-xs">Disk</span>
+            </div>
+            <p className={isDark ? 'text-lg font-semibold text-white' : 'text-lg font-semibold text-gray-900'}>{metrics.disk ? metrics.disk + ' GB' : '--'}</p>
+          </div>
+          <div className={isDark ? 'bg-dark-800/50 rounded-lg p-3' : 'bg-gray-50 rounded-lg p-3'}>
+            <div className={isDark ? 'flex items-center gap-2 text-dark-400 mb-1' : 'flex items-center gap-2 text-gray-500 mb-1'}>
+              <Zap className="w-3 h-3" />
+              <span className="text-xs">TTS Power</span>
+            </div>
+            <p className={node.ttsPowerStatus === 'available' ? 'text-lg font-semibold text-emerald-400' : isDark ? 'text-lg font-semibold text-dark-400' : 'text-lg font-semibold text-gray-400'}>
+              {node.ttsPowerStatus === 'available' ? 'Available' : 'Unavailable'}
+            </p>
+          </div>
+          <div className={isDark ? 'bg-dark-800/50 rounded-lg p-3' : 'bg-gray-50 rounded-lg p-3'}>
+            <div className={isDark ? 'flex items-center gap-2 text-dark-400 mb-1' : 'flex items-center gap-2 text-gray-500 mb-1'}>
+              <Download className="w-3 h-3" />
+              <span className="text-xs">Download</span>
+            </div>
+            <p className={isDark ? 'text-lg font-semibold text-white' : 'text-lg font-semibold text-gray-900'}>{metrics.speed ? metrics.speed.toFixed(0) + ' Mbps' : '--'}</p>
+          </div>
+          <div className={isDark ? 'bg-dark-800/50 rounded-lg p-3' : 'bg-gray-50 rounded-lg p-3'}>
+            <div className={isDark ? 'flex items-center gap-2 text-dark-400 mb-1' : 'flex items-center gap-2 text-gray-500 mb-1'}>
+              <Upload className="w-3 h-3" />
+              <span className="text-xs">Upload</span>
+            </div>
+            <p className={isDark ? 'text-lg font-semibold text-white' : 'text-lg font-semibold text-gray-900'}>{metrics.uploadSpeed ? metrics.uploadSpeed.toFixed(0) + ' Mbps' : '--'}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className={isDark ? 'mt-4 p-3 bg-netrum-500/10 border border-netrum-500/30 rounded-lg' : 'mt-4 p-3 bg-orange-50 border border-orange-200 rounded-lg'}>
+        <div className="flex items-center justify-between">
+          <span className={isDark ? 'text-sm text-dark-300' : 'text-sm text-gray-600'}>Total Tasks Completed</span>
+          <span className="text-lg font-display font-bold text-netrum-400">{node.taskCount ? node.taskCount.toLocaleString() : '0'}</span>
+        </div>
+      </div>
     </div>
   );
 }

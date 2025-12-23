@@ -1,114 +1,87 @@
-import React from 'react';
-import { Cpu, Coins, Clock, Zap, CheckCircle, XCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Server, Zap, RefreshCw, Clock, XCircle } from 'lucide-react';
+import { useTheme } from '../App';
+import { fetchEthPrice, formatDateDMY } from '../api/netrum';
 
-function StatCard({ icon: Icon, label, value, subValue, status, delay = 0 }) {
-  const statusColors = {
-    online: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/30',
-    offline: 'text-red-400 bg-red-400/10 border-red-400/30',
-    pending: 'text-amber-400 bg-amber-400/10 border-amber-400/30',
-    default: 'text-netrum-400 bg-netrum-400/10 border-netrum-400/30'
-  };
+function StatsGrid(props) {
+  var nodeInfo = props.nodeInfo;
+  var claimHistory = props.claimHistory;
+  var tokenData = props.tokenData;
+  var theme = useTheme().theme;
+  var isDark = theme === 'dark';
+  var [ethPrice, setEthPrice] = useState(null);
 
-  return (
-    <div 
-      className="card card-hover animate-slide-up"
-      style={{ animationDelay: `${delay}ms` }}
-    >
-      <div className="flex items-start justify-between mb-4">
-        <div className={`p-3 rounded-xl ${statusColors[status] || statusColors.default} border`}>
-          <Icon className="w-5 h-5" />
-        </div>
-        {status && (
-          <div className="flex items-center gap-1.5">
-            {status === 'online' ? (
-              <CheckCircle className="w-4 h-4 text-emerald-400" />
-            ) : status === 'offline' ? (
-              <XCircle className="w-4 h-4 text-red-400" />
-            ) : null}
-          </div>
-        )}
-      </div>
-      
-      <div>
-        <p className="stat-label mb-1">{label}</p>
-        <p className="stat-value text-white">
-          {value ?? '--'}
-        </p>
-        {subValue && (
-          <p className="text-sm text-dark-400 mt-1">{subValue}</p>
-        )}
-      </div>
-    </div>
+  useEffect(function() {
+    fetchEthPrice().then(setEthPrice);
+  }, []);
+
+  var node = nodeInfo && nodeInfo.node ? nodeInfo.node : {};
+  var history = claimHistory || {};
+  var lastClaim = history.lastClaim || {};
+  var totalClaims = tokenData && tokenData.totalClaims ? tokenData.totalClaims : (history.totalClaims || 0);
+
+  var isActive = node.nodeStatus === 'Active';
+  var syncStatus = node.syncStatus || 'Unknown';
+  var syncCount = node.syncCount || 0;
+  var taskCount = node.taskCount || 0;
+  var lastClaimDate = lastClaim.timestamp ? formatDateDMY(lastClaim.timestamp) : '--';
+
+  var stats = [
+    {
+      label: 'Node Status',
+      value: node.nodeStatus || 'Unknown',
+      icon: Server,
+      color: isActive ? 'emerald' : 'red',
+      badge: isActive ? null : React.createElement(XCircle, { className: 'w-4 h-4 text-red-400' })
+    },
+    {
+      label: 'Sync Status',
+      value: syncStatus,
+      subValue: 'Tasks: ' + taskCount.toLocaleString(),
+      icon: Zap,
+      color: syncStatus === 'Active' ? 'emerald' : 'amber'
+    },
+    {
+      label: 'Sync Count',
+      value: syncCount.toLocaleString(),
+      subValue: 'Total syncs',
+      icon: RefreshCw,
+      color: 'blue'
+    },
+    {
+      label: 'Last Claim',
+      value: lastClaimDate,
+      subValue: totalClaims > 0 ? totalClaims + ' total claims' : null,
+      icon: Clock,
+      color: 'netrum'
+    }
+  ];
+
+  return React.createElement('div', { className: 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4' },
+    stats.map(function(stat, index) {
+      var Icon = stat.icon;
+      var colorClasses = {
+        emerald: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400',
+        red: 'bg-red-500/10 border-red-500/30 text-red-400',
+        amber: 'bg-amber-500/10 border-amber-500/30 text-amber-400',
+        blue: 'bg-blue-500/10 border-blue-500/30 text-blue-400',
+        netrum: 'bg-netrum-500/10 border-netrum-500/30 text-netrum-400'
+      };
+      var iconClass = colorClasses[stat.color] || colorClasses.netrum;
+
+      return React.createElement('div', { key: index, className: isDark ? 'card card-hover' : 'card card-hover bg-white border-gray-200' },
+        React.createElement('div', { className: 'flex items-start justify-between mb-4' },
+          React.createElement('div', { className: 'p-3 rounded-xl border ' + iconClass },
+            React.createElement(Icon, { className: 'w-5 h-5' })
+          ),
+          stat.badge
+        ),
+        React.createElement('p', { className: isDark ? 'text-xs uppercase tracking-wider text-dark-400 mb-1' : 'text-xs uppercase tracking-wider text-gray-500 mb-1' }, stat.label),
+        React.createElement('p', { className: isDark ? 'text-2xl font-display font-bold text-white' : 'text-2xl font-display font-bold text-gray-900' }, stat.value),
+        stat.subValue && React.createElement('p', { className: isDark ? 'text-sm text-dark-400 mt-1' : 'text-sm text-gray-500 mt-1' }, stat.subValue)
+      );
+    })
   );
-}
-
-function StatsGrid({ data }) {
-  const { miningStatus, claimStatus, metricsStatus } = data;
-
-  // Parse mining data
-  const isMining = miningStatus?.mining || miningStatus?.status === 'active';
-  const miningRate = miningStatus?.rate || miningStatus?.mining_rate || '0.5';
-  
-  // Parse claim data
-  const pendingRewards = claimStatus?.pending || claimStatus?.claimable || '0';
-  const totalClaimed = claimStatus?.total_claimed || claimStatus?.totalClaimed || '0';
-  
-  // Parse node status
-  const nodeStatus = metricsStatus?.status || (isMining ? 'online' : 'offline');
-  const uptime = metricsStatus?.uptime || '0';
-
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      <StatCard
-        icon={Cpu}
-        label="Node Status"
-        value={nodeStatus.charAt(0).toUpperCase() + nodeStatus.slice(1)}
-        status={nodeStatus === 'active' || nodeStatus === 'online' ? 'online' : 'offline'}
-        delay={0}
-      />
-      
-      <StatCard
-        icon={Zap}
-        label="Mining Status"
-        value={isMining ? 'Active' : 'Inactive'}
-        subValue={`Rate: ${miningRate} NPT/day`}
-        status={isMining ? 'online' : 'pending'}
-        delay={100}
-      />
-      
-      <StatCard
-        icon={Coins}
-        label="Pending Rewards"
-        value={`${parseFloat(pendingRewards).toFixed(4)} NPT`}
-        subValue={`Total: ${parseFloat(totalClaimed).toFixed(2)} NPT`}
-        status="default"
-        delay={200}
-      />
-      
-      <StatCard
-        icon={Clock}
-        label="Uptime"
-        value={formatUptime(uptime)}
-        status="default"
-        delay={300}
-      />
-    </div>
-  );
-}
-
-function formatUptime(seconds) {
-  if (!seconds || seconds === '0') return '--';
-  
-  const num = parseFloat(seconds);
-  if (isNaN(num)) return '--';
-  
-  const days = Math.floor(num / 86400);
-  const hours = Math.floor((num % 86400) / 3600);
-  const minutes = Math.floor((num % 3600) / 60);
-  
-  if (days > 0) return `${days}d ${hours}h`;
-  if (hours > 0) return `${hours}h ${minutes}m`;
-  return `${minutes}m`;
 }
 
 export default StatsGrid;

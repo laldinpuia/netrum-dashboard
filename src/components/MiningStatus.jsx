@@ -1,136 +1,139 @@
 import React, { useState, useEffect } from 'react';
-import { Hammer, Timer, TrendingUp, Flame } from 'lucide-react';
+import { Gem, Zap, Clock, TrendingUp, CheckCircle, Coins, Wallet } from 'lucide-react';
+import { useTheme } from '../App';
+import { fetchEthPrice, formatDateTimeDMY } from '../api/netrum';
 
-function MiningStatus({ miningStatus, cooldown }) {
-  const isMining = miningStatus?.mining || miningStatus?.status === 'active';
-  const miningRate = miningStatus?.rate || miningStatus?.mining_rate || '0.5';
-  const totalMined = miningStatus?.total_mined || miningStatus?.mined || '0';
-
-  return (
-    <div className="card card-hover">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div className={`p-3 rounded-xl ${
-            isMining 
-              ? 'bg-emerald-500/10 border border-emerald-500/30' 
-              : 'bg-dark-700 border border-dark-600'
-          }`}>
-            <Hammer className={`w-5 h-5 ${isMining ? 'text-emerald-400' : 'text-dark-400'}`} />
-          </div>
-          <div>
-            <h3 className="font-display font-semibold text-white">Mining Status</h3>
-            <p className="text-sm text-dark-400">Current mining activity</p>
-          </div>
-        </div>
-        
-        {isMining && (
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-full">
-            <Flame className="w-3 h-3 text-emerald-400 animate-pulse" />
-            <span className="text-xs font-medium text-emerald-400">Mining Active</span>
-          </div>
-        )}
-      </div>
-
-      {/* Mining Stats */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <div className="bg-dark-800/50 rounded-xl p-4">
-          <div className="flex items-center gap-2 text-dark-400 mb-2">
-            <TrendingUp className="w-4 h-4" />
-            <span className="text-xs uppercase tracking-wider">Mining Rate</span>
-          </div>
-          <p className="text-2xl font-display font-bold text-white">
-            {miningRate}
-          </p>
-          <p className="text-xs text-dark-400 mt-1">NPT per day</p>
-        </div>
-
-        <div className="bg-dark-800/50 rounded-xl p-4">
-          <div className="flex items-center gap-2 text-dark-400 mb-2">
-            <Hammer className="w-4 h-4" />
-            <span className="text-xs uppercase tracking-wider">Total Mined</span>
-          </div>
-          <p className="text-2xl font-display font-bold text-white">
-            {parseFloat(totalMined).toFixed(2)}
-          </p>
-          <p className="text-xs text-dark-400 mt-1">NPT tokens</p>
-        </div>
-      </div>
-
-      {/* Cooldown Timer */}
-      <CooldownTimer cooldown={cooldown} />
-    </div>
-  );
-}
-
-function CooldownTimer({ cooldown }) {
-  const [timeLeft, setTimeLeft] = useState(null);
+function MiningStatus({ miningStatus, nodeInfo, miningDebug, tokenData }) {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  const [ethPrice, setEthPrice] = useState(null);
 
   useEffect(() => {
-    if (!cooldown?.remaining_seconds && !cooldown?.cooldown_remaining) return;
-    
-    const remaining = cooldown.remaining_seconds || cooldown.cooldown_remaining || 0;
-    setTimeLeft(remaining);
+    fetchEthPrice().then(setEthPrice);
+  }, []);
 
-    const timer = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+  const node = nodeInfo && nodeInfo.node ? nodeInfo.node : {};
+  const mining = miningStatus || {};
+  const miningInfo = mining.miningStatus || {};
+  const contractDetails = mining.contractDetails || {};
+  const miningData = contractDetails.miningInfo || {};
+  
+  const debug = miningDebug || {};
+  const debugContract = debug.contract || {};
+  const debugMining = debugContract.miningInfo || {};
+  const debugWallet = debug.wallet || {};
 
-    return () => clearInterval(timer);
-  }, [cooldown]);
+  const isActive = debugMining.isActive || miningData.isActive || false;
+  const minedTokens = debugMining.minedTokensFormatted || miningData.minedTokens || 0;
+  const speedPerSec = debugMining.speedPerSec ? parseFloat(debugMining.speedPerSec) / 1e18 : (miningData.speedPerSec ? parseFloat(miningData.speedPerSec) / 1e18 : 0);
+  const percentComplete = debugMining.percentCompleteNumber ? debugMining.percentCompleteNumber / 100 : (miningData.percentComplete ? miningData.percentComplete / 100 : 0);
+  const walletBalance = debugWallet.balanceEth || contractDetails.walletBalanceEth || 0;
+  const totalNptClaimed = tokenData && tokenData.totalNptClaimed ? tokenData.totalNptClaimed : 0;
+  const totalClaims = tokenData && tokenData.totalClaims ? tokenData.totalClaims : 0;
 
-  const formatTime = (seconds) => {
-    if (!seconds || seconds <= 0) return '00:00:00';
-    
-    const hrs = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    
-    return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
+  // Current mining session started after last claim
+  const currentMiningStart = node.lastClaimTime || node.lastMiningStart;
 
-  const isOnCooldown = timeLeft && timeLeft > 0;
-  const progress = cooldown?.total_seconds 
-    ? ((cooldown.total_seconds - (timeLeft || 0)) / cooldown.total_seconds) * 100 
-    : 100;
+  const usdValue = ethPrice ? (walletBalance * ethPrice).toFixed(2) : null;
+  const displayProgress = percentComplete >= 100 ? 100 : percentComplete;
 
   return (
-    <div className={`rounded-xl p-4 ${
-      isOnCooldown 
-        ? 'bg-purple-500/10 border border-purple-500/30' 
-        : 'bg-emerald-500/10 border border-emerald-500/30'
-    }`}>
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <Timer className={`w-4 h-4 ${isOnCooldown ? 'text-purple-400' : 'text-emerald-400'}`} />
-          <span className={`text-sm font-medium ${isOnCooldown ? 'text-purple-400' : 'text-emerald-400'}`}>
-            {isOnCooldown ? 'Cooldown Active' : 'Ready to Claim'}
-          </span>
+    <div className={isDark ? 'card card-hover' : 'card card-hover bg-white border-gray-200'}>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className={isActive ? 'p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30' : isDark ? 'p-3 rounded-xl bg-dark-700 border border-dark-600' : 'p-3 rounded-xl bg-gray-100 border border-gray-200'}>
+            <Gem className={isActive ? 'w-5 h-5 text-emerald-400' : isDark ? 'w-5 h-5 text-dark-400' : 'w-5 h-5 text-gray-400'} />
+          </div>
+          <div>
+            <h3 className={isDark ? 'font-display font-semibold text-white' : 'font-display font-semibold text-gray-900'}>Mining Monitor</h3>
+            <p className={isDark ? 'text-sm text-dark-400' : 'text-sm text-gray-500'}>Real-time mining activity</p>
+          </div>
         </div>
-        <span className={`font-mono font-bold ${isOnCooldown ? 'text-purple-300' : 'text-emerald-300'}`}>
-          {formatTime(timeLeft)}
-        </span>
+        <div className={isActive ? 'flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-full' : 'flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 border border-amber-500/30 rounded-full'}>
+          <div className={isActive ? 'w-2 h-2 bg-emerald-400 rounded-full animate-pulse' : 'w-2 h-2 bg-amber-400 rounded-full'} />
+          <span className={isActive ? 'text-xs font-medium text-emerald-400' : 'text-xs font-medium text-amber-400'}>{isActive ? 'ACTIVE' : 'INACTIVE'}</span>
+        </div>
       </div>
 
-      {/* Progress Bar */}
-      <div className="h-2 bg-dark-800 rounded-full overflow-hidden">
-        <div 
-          className={`h-full rounded-full transition-all duration-1000 ${
-            isOnCooldown ? 'bg-purple-500' : 'bg-emerald-500'
-          }`}
-          style={{ width: `${progress}%` }}
-        />
+      <div className={isDark ? 'bg-dark-800/50 rounded-xl p-4 mb-4' : 'bg-gray-50 rounded-xl p-4 mb-4'}>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <Clock className={isDark ? 'w-4 h-4 text-dark-400' : 'w-4 h-4 text-gray-500'} />
+            <span className={isDark ? 'text-sm text-dark-300' : 'text-sm text-gray-600'}>Mining Progress (24h cycle)</span>
+          </div>
+          <span className={isDark ? 'text-sm font-mono text-white' : 'text-sm font-mono text-gray-900'}>{displayProgress.toFixed(1)}%</span>
+        </div>
+        <div className={isDark ? 'h-4 bg-dark-700 rounded-full overflow-hidden mb-2' : 'h-4 bg-gray-200 rounded-full overflow-hidden mb-2'}>
+          <div className={displayProgress >= 100 ? 'h-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-1000' : 'h-full bg-gradient-to-r from-netrum-600 to-netrum-400 transition-all duration-1000'} style={{ width: displayProgress + '%' }} />
+        </div>
+        <div className="flex items-center justify-between">
+          <span className={isDark ? 'text-xs text-dark-400' : 'text-xs text-gray-500'}>{displayProgress >= 100 ? '✅ Ready to claim!' : 'Mining in progress...'}</span>
+          <span className={isDark ? 'text-xs text-dark-400' : 'text-xs text-gray-500'}>24h</span>
+        </div>
       </div>
 
-      {cooldown?.next_claim_time && (
-        <p className="text-xs text-dark-400 mt-2">
-          Next claim available: {new Date(cooldown.next_claim_time).toLocaleString()}
-        </p>
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        <div className={isDark ? 'bg-dark-800/50 rounded-xl p-4' : 'bg-gray-50 rounded-xl p-4'}>
+          <div className={isDark ? 'flex items-center gap-2 text-dark-400 mb-2' : 'flex items-center gap-2 text-gray-500 mb-2'}>
+            <Coins className="w-4 h-4" />
+            <span className="text-xs uppercase tracking-wider">Session Mined</span>
+          </div>
+          <p className="text-xl font-display font-bold text-netrum-400">{typeof minedTokens === 'number' ? minedTokens.toFixed(4) : minedTokens}</p>
+          <p className={isDark ? 'text-xs text-dark-400 mt-1' : 'text-xs text-gray-500 mt-1'}>NPT</p>
+        </div>
+        <div className={isDark ? 'bg-dark-800/50 rounded-xl p-4' : 'bg-gray-50 rounded-xl p-4'}>
+          <div className={isDark ? 'flex items-center gap-2 text-dark-400 mb-2' : 'flex items-center gap-2 text-gray-500 mb-2'}>
+            <Zap className="w-4 h-4" />
+            <span className="text-xs uppercase tracking-wider">Speed</span>
+          </div>
+          <p className={isDark ? 'text-xl font-display font-bold text-white' : 'text-xl font-display font-bold text-gray-900'}>{speedPerSec.toFixed(8)}</p>
+          <p className={isDark ? 'text-xs text-dark-400 mt-1' : 'text-xs text-gray-500 mt-1'}>NPT/sec</p>
+        </div>
+      </div>
+
+      {totalClaims > 0 && (
+        <div className={isDark ? 'bg-netrum-500/10 border border-netrum-500/30 rounded-xl p-4 mb-4' : 'bg-orange-50 border border-orange-200 rounded-xl p-4 mb-4'}>
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <TrendingUp className="w-4 h-4 text-netrum-400" />
+                <span className={isDark ? 'text-xs uppercase tracking-wider text-dark-400' : 'text-xs uppercase tracking-wider text-gray-500'}>Total NPT Claimed</span>
+              </div>
+              <p className="text-2xl font-display font-bold text-netrum-400">{totalNptClaimed.toFixed(4)} <span className="text-sm font-normal">NPT</span></p>
+            </div>
+            <div className="text-right">
+              <p className={isDark ? 'text-xs text-dark-400' : 'text-xs text-gray-500'}>From {totalClaims} claims</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className={isDark ? 'bg-dark-800/50 rounded-xl p-4' : 'bg-gray-50 rounded-xl p-4'}>
+          <div className={isDark ? 'flex items-center gap-2 text-dark-400 mb-2' : 'flex items-center gap-2 text-gray-500 mb-2'}>
+            <Wallet className="w-4 h-4" />
+            <span className="text-xs uppercase tracking-wider">Wallet Balance</span>
+          </div>
+          <p className={isDark ? 'text-lg font-display font-bold text-white' : 'text-lg font-display font-bold text-gray-900'}>{walletBalance.toFixed(6)}</p>
+          <p className={isDark ? 'text-xs text-dark-400 mt-1' : 'text-xs text-gray-500 mt-1'}>ETH {usdValue && <span className="text-netrum-400">(${usdValue})</span>}</p>
+        </div>
+        <div className={isDark ? 'bg-dark-800/50 rounded-xl p-4' : 'bg-gray-50 rounded-xl p-4'}>
+          <div className={isDark ? 'flex items-center gap-2 text-dark-400 mb-2' : 'flex items-center gap-2 text-gray-500 mb-2'}>
+            <CheckCircle className="w-4 h-4" />
+            <span className="text-xs uppercase tracking-wider">Status</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className={isActive ? 'text-lg font-display font-bold text-emerald-400' : isDark ? 'text-lg font-display font-bold text-dark-400' : 'text-lg font-display font-bold text-gray-500'}>{isActive ? 'Mining' : 'Idle'}</span>
+            {isActive && <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />}
+          </div>
+          <p className={isDark ? 'text-xs text-dark-400 mt-1' : 'text-xs text-gray-500 mt-1'}>{walletBalance >= 0.0002 ? 'Balance OK' : 'Low balance'}</p>
+        </div>
+      </div>
+
+      {currentMiningStart && (
+        <div className={isDark ? 'mt-4 pt-4 border-t border-dark-800' : 'mt-4 pt-4 border-t border-gray-200'}>
+          <p className={isDark ? 'text-xs text-dark-400' : 'text-xs text-gray-500'}>Mining Started: {formatDateTimeDMY(currentMiningStart)}</p>
+        </div>
       )}
     </div>
   );

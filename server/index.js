@@ -1,310 +1,214 @@
 import express from 'express';
 import cors from 'cors';
 import NodeCache from 'node-cache';
-import fetch from 'node-fetch';
+import path from 'path';
 import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT || 3001;
-const NETRUM_API = 'https://node.netrumlabs.dev';
-
-// Cache with 30-second TTL to comply with rate limits
-const cache = new NodeCache({ stdTTL: 30, checkperiod: 10 });
-
-// SSE clients storage
-const clients = new Set();
+const cache = new NodeCache({ stdTTL: 300 });
 
 app.use(cors());
 app.use(express.json());
+app.use(express.static(path.join(__dirname, '../dist')));
 
-// Serve static files in production
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(join(__dirname, '../dist')));
-}
+const NETRUM_API = 'https://node.netrumlabs.dev';
+const ETHERSCAN_API = 'https://api.etherscan.io/v2/api';
+const ETHERSCAN_KEY = 'M1JPZBESM3D2DTMMJ9T33D4YIGQ39HNJEK';
+const BASE_CHAINID = 8453;
+const NPT_CONTRACT = '0xb8c2ce84f831175136cebbfd48ce4bab9c7a6424';
 
-// Helper function to fetch from Netrum API with caching
-async function fetchWithCache(endpoint, cacheKey) {
-  const cached = cache.get(cacheKey);
-  if (cached) {
-    return { data: cached, fromCache: true };
-  }
+let nodesCache = { data: null, loading: false, lastFetch: 0 };
 
+async function fetchWithTimeout(url, timeout = 30000) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
   try {
-    const response = await fetch(`${NETRUM_API}${endpoint}`, {
-      headers: {
-        'Accept': 'application/json',
-        'User-Agent': 'NetrumDashboard/1.0'
-      }
-    });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-    
-    const data = await response.json();
-    cache.set(cacheKey, data);
-    return { data, fromCache: false };
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(id);
+    return response;
   } catch (error) {
-    console.error(`Error fetching ${endpoint}:`, error.message);
+    clearTimeout(id);
     throw error;
   }
 }
 
-// SSE endpoint for real-time updates
-app.get('/api/stream', (req, res) => {
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  res.setHeader('Access-Control-Allow-Origin', '*');
-
-  clients.add(res);
-  console.log(`Client connected. Total clients: ${clients.size}`);
-
-  req.on('close', () => {
-    clients.delete(res);
-    console.log(`Client disconnected. Total clients: ${clients.size}`);
-  });
-});
-
-// Broadcast to all SSE clients
-function broadcast(event, data) {
-  clients.forEach(client => {
-    client.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
-  });
+function fetchNodesBackground() {
+  if (nodesCache.loading) return;
+  if (Date.now() - nodesCache.lastFetch < 300000 && nodesCache.data) return;
+  
+  nodesCache.loading = true;
+  console.log('Background: Fetching nodes...');
+  
+  fetchWithTimeout(NETRUM_API + '/nodes?limit=2000', 90000)
+    .then(res => res.json())
+    .then(data => {
+      if (data.success && data.nodes) {
+        nodesCache.data = data;
+        nodesCache.lastFetch = Date.now();
+        console.log('Background: Fetched ' + data.nodes.length + ' nodes');
+      }
+    })
+    .catch(err => console.error('Background fetch error:', err.message))
+    .finally(() => { nodesCache.loading = false; });
 }
 
-// API Routes
+fetchNodesBackground();
+setInterval(fetchNodesBackground, 300000);
 
-// Get overall network stats
-app.get('/api/stats', async (req, res) => {
+function findNodeFromCache(identifier) {
+  if (!nodesCache.data || !nodesCache.data.nodes) return null;
+  const lower = identifier.toLowerCase();
+  return nodesCache.data.nodes.find(n => 
+    n.nodeId.toLowerCase() === lower || n.wallet.toLowerCase() === lower
+  );
+}
+
+async function fetchMiningDebug(wallet) {
+  const cacheKey = 'mining_' + wallet.toLowerCase();
+  const cached = cache.get(cacheKey);
+  if (cached) return cached;
+
   try {
-    const { data, fromCache } = await fetchWithCache('/lite/nodes/stats', 'network-stats');
-    res.json({ success: true, data, fromCache, timestamp: Date.now() });
+    const response = await fetchWithTimeout(NETRUM_API + '/mining/debug/contract/' + wallet, 15000);
+    if (!response.ok) return { success: false };
+    const data = await response.json();
+    if (data.success) cache.set(cacheKey, data, 60);
+    return data;
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    return { success: false };
+  }
+}
+
+async function fetchTokenTransfers(wallet) {
+  const cacheKey = 'tokens_' + wallet.toLowerCase();
+  const cached = cache.get(cacheKey);
+  if (cached) return cached;
+
+  try {
+    const url = ETHERSCAN_API + '?chainid=' + BASE_CHAINID + '&module=account&action=tokentx&contractaddress=' + NPT_CONTRACT + '&address=' + wallet + '&page=1&offset=1000&sort=desc&apikey=' + ETHERSCAN_KEY;
+    const response = await fetchWithTimeout(url, 15000);
+    const data = await response.json();
+    if (data.status === '1') cache.set(cacheKey, data, 300);
+    return data;
+  } catch (error) {
+    return null;
+  }
+}
+
+app.get('/api/stats', (req, res) => {
+  fetchNodesBackground();
+  if (nodesCache.data && nodesCache.data.nodes) {
+    const nodes = nodesCache.data.nodes;
+    const active = nodes.filter(n => n.nodeStatus === 'Active').length;
+    const tasks = nodes.reduce((s, n) => s + (n.taskCount || 0), 0);
+    res.json({ totalNodes: nodes.length, activeNodes: active, inactiveNodes: nodes.length - active, totalTasks: tasks });
+  } else {
+    res.json({ totalNodes: '--', activeNodes: '--', inactiveNodes: '--', totalTasks: '--' });
   }
 });
 
-// Get active nodes
-app.get('/api/nodes/active', async (req, res) => {
-  try {
-    const { data, fromCache } = await fetchWithCache('/lite/nodes/active', 'active-nodes');
-    res.json({ success: true, data, fromCache, timestamp: Date.now() });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+app.get('/api/nodes/active', (req, res) => {
+  fetchNodesBackground();
+  if (nodesCache.data && nodesCache.data.nodes) {
+    const active = nodesCache.data.nodes.filter(n => n.nodeStatus === 'Active');
+    res.json({ count: active.length, nodes: active.slice(0, 10) });
+  } else {
+    res.json({ count: 0, nodes: [] });
   }
 });
 
-// Get specific node by ID
-app.get('/api/node/:nodeId', async (req, res) => {
-  const { nodeId } = req.params;
-  try {
-    const { data, fromCache } = await fetchWithCache(`/lite/nodes/id/${nodeId}`, `node-${nodeId}`);
-    res.json({ success: true, data, fromCache, timestamp: Date.now() });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
+app.get('/api/node/:nodeId', (req, res) => {
+  fetchNodesBackground();
+  const node = findNodeFromCache(req.params.nodeId);
+  res.json({ node: node || null });
 });
 
-// Get node stats from polling
-app.get('/api/node/:nodeId/stats', async (req, res) => {
-  const { nodeId } = req.params;
-  try {
-    const { data, fromCache } = await fetchWithCache(`/polling/node-stats/${nodeId}`, `polling-${nodeId}`);
-    res.json({ success: true, data, fromCache, timestamp: Date.now() });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Get mining status
-app.get('/api/mining/:nodeId', async (req, res) => {
-  const { nodeId } = req.params;
-  try {
-    const { data, fromCache } = await fetchWithCache(`/mining/status/${nodeId}`, `mining-${nodeId}`);
-    res.json({ success: true, data, fromCache, timestamp: Date.now() });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Get mining cooldown
-app.get('/api/mining/:nodeId/cooldown', async (req, res) => {
-  const { nodeId } = req.params;
-  try {
-    const { data, fromCache } = await fetchWithCache(`/mining/cooldown/${nodeId}`, `cooldown-${nodeId}`);
-    res.json({ success: true, data, fromCache, timestamp: Date.now() });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Get node status from metrics
-app.get('/api/metrics/:nodeId/status', async (req, res) => {
-  const { nodeId } = req.params;
-  try {
-    const { data, fromCache } = await fetchWithCache(`/metrics/node-status/${nodeId}`, `metrics-status-${nodeId}`);
-    res.json({ success: true, data, fromCache, timestamp: Date.now() });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Get metrics cooldown check
-app.get('/api/metrics/:nodeId/cooldown', async (req, res) => {
-  const { nodeId } = req.params;
-  try {
-    const { data, fromCache } = await fetchWithCache(`/metrics/check-cooldown/${nodeId}`, `metrics-cooldown-${nodeId}`);
-    res.json({ success: true, data, fromCache, timestamp: Date.now() });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Get system requirements
-app.get('/api/requirements', async (req, res) => {
-  try {
-    const { data, fromCache } = await fetchWithCache('/metrics/requirements', 'requirements');
-    res.json({ success: true, data, fromCache, timestamp: Date.now() });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Get registration status
-app.get('/api/register/status', async (req, res) => {
-  try {
-    const { data, fromCache } = await fetchWithCache('/register/status', 'register-status');
-    res.json({ success: true, data, fromCache, timestamp: Date.now() });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Get claim status by wallet address
-app.get('/api/claim/:address/status', async (req, res) => {
-  const { address } = req.params;
-  try {
-    const { data, fromCache } = await fetchWithCache(`/claim/status/${address}`, `claim-status-${address}`);
-    res.json({ success: true, data, fromCache, timestamp: Date.now() });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Get claim history by wallet address
-app.get('/api/claim/:address/history', async (req, res) => {
-  const { address } = req.params;
-  try {
-    const { data, fromCache } = await fetchWithCache(`/claim/history/${address}`, `claim-history-${address}`);
-    res.json({ success: true, data, fromCache, timestamp: Date.now() });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Get live log status
-app.get('/api/live-log/:address', async (req, res) => {
-  const { address } = req.params;
-  try {
-    const { data, fromCache } = await fetchWithCache(`/live-log/status/${address}`, `live-log-${address}`);
-    res.json({ success: true, data, fromCache, timestamp: Date.now() });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Get all data for a specific node (aggregated endpoint)
-app.get('/api/dashboard/:nodeId/:address', async (req, res) => {
-  const { nodeId, address } = req.params;
+app.get('/api/claim/:wallet/history', async (req, res) => {
+  const wallet = req.params.wallet;
+  const data = await fetchTokenTransfers(wallet);
   
-  try {
-    const results = await Promise.allSettled([
-      fetchWithCache(`/lite/nodes/id/${nodeId}`, `node-${nodeId}`),
-      fetchWithCache(`/mining/status/${nodeId}`, `mining-${nodeId}`),
-      fetchWithCache(`/mining/cooldown/${nodeId}`, `cooldown-${nodeId}`),
-      fetchWithCache(`/metrics/node-status/${nodeId}`, `metrics-status-${nodeId}`),
-      fetchWithCache(`/claim/status/${address}`, `claim-status-${address}`),
-      fetchWithCache(`/claim/history/${address}`, `claim-history-${address}`),
-      fetchWithCache(`/live-log/status/${address}`, `live-log-${address}`),
-      fetchWithCache('/lite/nodes/stats', 'network-stats')
-    ]);
-
-    const [nodeInfo, miningStatus, miningCooldown, metricsStatus, claimStatus, claimHistory, liveLog, networkStats] = results;
-
-    res.json({
-      success: true,
-      timestamp: Date.now(),
-      data: {
-        nodeInfo: nodeInfo.status === 'fulfilled' ? nodeInfo.value.data : null,
-        miningStatus: miningStatus.status === 'fulfilled' ? miningStatus.value.data : null,
-        miningCooldown: miningCooldown.status === 'fulfilled' ? miningCooldown.value.data : null,
-        metricsStatus: metricsStatus.status === 'fulfilled' ? metricsStatus.value.data : null,
-        claimStatus: claimStatus.status === 'fulfilled' ? claimStatus.value.data : null,
-        claimHistory: claimHistory.status === 'fulfilled' ? claimHistory.value.data : null,
-        liveLog: liveLog.status === 'fulfilled' ? liveLog.value.data : null,
-        networkStats: networkStats.status === 'fulfilled' ? networkStats.value.data : null
-      }
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+  if (!data || data.status !== '1' || !data.result) {
+    return res.json({ totalClaims: 0, lastClaim: null });
   }
+
+  const claims = data.result.filter(tx => tx.to.toLowerCase() === wallet.toLowerCase());
+  let lastClaim = null;
+  
+  if (claims.length > 0) {
+    const node = findNodeFromCache(wallet);
+    lastClaim = {
+      timestamp: new Date(parseInt(claims[0].timeStamp) * 1000).toISOString(),
+      amount: parseFloat(claims[0].value) / 1e18,
+      txHash: claims[0].hash,
+      nodeId: node ? node.nodeId : null,
+      taskCountAtTime: node ? node.taskCount : null
+    };
+  }
+
+  res.json({ totalClaims: claims.length, lastClaim: lastClaim });
 });
 
-// Cache info endpoint
-app.get('/api/cache/info', (req, res) => {
-  const stats = cache.getStats();
-  const keys = cache.keys();
+app.get('/api/mining/:nodeId', async (req, res) => {
+  const node = findNodeFromCache(req.params.nodeId);
+  const wallet = node ? node.wallet : req.params.nodeId;
+  
+  const debug = await fetchMiningDebug(wallet);
+  const info = debug.contract?.miningInfo || {};
+  
   res.json({
-    success: true,
-    stats,
-    cachedKeys: keys.length,
-    ttl: 30
+    miningStatus: {
+      canStartMining: info.isActive || false,
+      contractStatus: info.isActive ? 'active' : 'inactive',
+      cooldownActive: false,
+      lastMiningStart: node?.lastMiningStart || null
+    },
+    contractDetails: {
+      walletBalanceEth: debug.wallet?.balanceEth || 0,
+      miningInfo: {
+        minedTokens: info.minedTokensFormatted || 0,
+        speedPerSec: info.speedPerSec || '0',
+        percentComplete: info.percentCompleteNumber || 0,
+        isActive: info.isActive || false,
+        pendingRewards: info.minedTokens || '0'
+      }
+    }
   });
 });
 
-// Clear cache endpoint (for development)
-app.post('/api/cache/clear', (req, res) => {
-  cache.flushAll();
-  res.json({ success: true, message: 'Cache cleared' });
+app.get('/api/tokens/:wallet', async (req, res) => {
+  const wallet = req.params.wallet;
+  const data = await fetchTokenTransfers(wallet);
+  
+  if (!data || data.status !== '1' || !data.result) {
+    return res.json({ totalClaims: 0, totalNptClaimed: 0, recentClaims: [] });
+  }
+
+  const claims = data.result.filter(tx => tx.to.toLowerCase() === wallet.toLowerCase());
+  let total = 0;
+  claims.forEach(c => total += parseFloat(c.value) / 1e18);
+
+  res.json({ totalClaims: claims.length, totalNptClaimed: total, recentClaims: claims.slice(0, 10) });
 });
 
-// Health check
+app.get('/api/mining-debug/:wallet', async (req, res) => {
+  res.json(await fetchMiningDebug(req.params.wallet));
+});
+
 app.get('/api/health', (req, res) => {
   res.json({ 
-    status: 'healthy', 
-    timestamp: Date.now(),
-    uptime: process.uptime()
+    status: 'ok', 
+    version: '1.0.9', 
+    nodesLoaded: nodesCache.data ? nodesCache.data.nodes.length : 0,
+    timestamp: new Date().toISOString() 
   });
 });
 
-// Catch-all for SPA routing in production
-if (process.env.NODE_ENV === 'production') {
-  app.get('*', (req, res) => {
-    res.sendFile(join(__dirname, '../dist/index.html'));
-  });
-}
-
-// Background job to refresh cache and broadcast updates
-setInterval(async () => {
-  try {
-    const { data } = await fetchWithCache('/lite/nodes/stats', 'network-stats');
-    broadcast('stats-update', data);
-  } catch (error) {
-    console.error('Background refresh error:', error.message);
-  }
-}, 35000); // Slightly longer than cache TTL
-
-app.listen(PORT, () => {
-  console.log(`
-  ╔═══════════════════════════════════════════════════════╗
-  ║     Netrum Dashboard Server Running                   ║
-  ║     Port: ${PORT}                                        ║
-  ║     API: http://localhost:${PORT}/api                    ║
-  ╚═══════════════════════════════════════════════════════╝
-  `);
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../dist/index.html'));
 });
+
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => console.log('Netrum Dashboard v1.0.9 running on port ' + PORT));
