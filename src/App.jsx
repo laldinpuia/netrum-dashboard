@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, createContext, useContext, useRef } from 'react';
-import { fetchStats, fetchActiveNodes, fetchNodeInfo, fetchClaimHistory, fetchMiningStatus, fetchTokenData, fetchMiningDebug } from './api/netrum';
+import { fetchStats, fetchActiveNodes, fetchNodeInfo, fetchClaimHistory, fetchMiningStatus, fetchTokenData, fetchMiningDebug, fetchTokenOverview } from './api/netrum';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import NodeSearch from './components/NodeSearch';
@@ -8,171 +8,206 @@ import NetworkStats from './components/NetworkStats';
 import NodeInfo from './components/NodeInfo';
 import MiningStatus from './components/MiningStatus';
 import ClaimHistory from './components/ClaimHistory';
-import LiveLog from './components/LiveLog';
 import PerformanceChart from './components/PerformanceChart';
 import RefreshTimer from './components/RefreshTimer';
 import ErrorMessage from './components/ErrorMessage';
 import { Search } from 'lucide-react';
 
-var ThemeContext = createContext();
+const ThemeContext = createContext();
 
 export function useTheme() {
   return useContext(ThemeContext);
 }
 
 function App() {
-  var savedTheme = 'dark';
-  if (typeof window !== 'undefined') {
-    savedTheme = localStorage.getItem('theme') || 'dark';
-  }
-  var [theme, setTheme] = useState(savedTheme);
-  var [stats, setStats] = useState(null);
-  var [activeNodes, setActiveNodes] = useState(null);
-  var [nodeInfo, setNodeInfo] = useState(null);
-  var [claimHistory, setClaimHistory] = useState(null);
-  var [miningStatus, setMiningStatus] = useState(null);
-  var [tokenData, setTokenData] = useState(null);
-  var [miningDebug, setMiningDebug] = useState(null);
-  var [loading, setLoading] = useState(false);
-  var [error, setError] = useState(null);
-  var [searchPerformed, setSearchPerformed] = useState(false);
-  var [currentNodeId, setCurrentNodeId] = useState(null);
-  var [currentWallet, setCurrentWallet] = useState(null);
-  var isRefreshing = useRef(false);
+  const savedTheme = typeof window !== 'undefined' ? localStorage.getItem('theme') || 'dark' : 'dark';
+  const [theme, setTheme] = useState(savedTheme);
+  const [stats, setStats] = useState(null);
+  const [activeNodes, setActiveNodes] = useState(null);
+  const [nodeInfo, setNodeInfo] = useState(null);
+  const [claimHistory, setClaimHistory] = useState(null);
+  const [miningStatus, setMiningStatus] = useState(null);
+  const [tokenData, setTokenData] = useState(null);
+  const [miningDebug, setMiningDebug] = useState(null);
+  const [tokenOverview, setTokenOverview] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [claimLoading, setClaimLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [searchPerformed, setSearchPerformed] = useState(false);
+  const [currentNodeId, setCurrentNodeId] = useState(null);
+  const [currentWallet, setCurrentWallet] = useState(null);
+  const isRefreshing = useRef(false);
 
-  useEffect(function() {
+  useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('theme', theme);
   }, [theme]);
 
-  var toggleTheme = function() {
-    setTheme(function(prev) { return prev === 'dark' ? 'light' : 'dark'; });
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
   };
 
-  var loadData = useCallback(async function(nodeId, wallet, isRefresh) {
+  // Clear all data when starting a new search
+  const clearData = () => {
+    setNodeInfo(null);
+    setClaimHistory(null);
+    setMiningStatus(null);
+    setTokenData(null);
+    setMiningDebug(null);
+    setError(null);
+  };
+
+  const loadData = useCallback(async (nodeId, wallet, isRefresh) => {
     if (isRefreshing.current && isRefresh) return;
     if (isRefresh) isRefreshing.current = true;
     
     if (!isRefresh) {
+      clearData();
       setLoading(true);
+      setClaimLoading(true);
       setError(null);
     }
     
     try {
-      // Fetch network stats first
-      var statsPromise = fetchStats();
-      var activePromise = fetchActiveNodes();
-      
-      var [statsData, activeData] = await Promise.all([statsPromise, activePromise]);
+      // Fetch network stats and token overview
+      const [statsData, activeData, overviewData] = await Promise.all([
+        fetchStats(),
+        fetchActiveNodes(),
+        fetchTokenOverview()
+      ]);
       setStats(statsData);
       setActiveNodes(activeData);
+      setTokenOverview(overviewData);
 
-      var resolvedNodeId = nodeId;
-      var resolvedWallet = wallet;
+      let resolvedNodeId = nodeId;
+      let resolvedWallet = wallet;
 
-      // If wallet provided, get claim history to find nodeId
-      if (wallet) {
-        var historyData = await fetchClaimHistory(wallet);
-        setClaimHistory(historyData);
-        if (historyData && historyData.lastClaim && historyData.lastClaim.nodeId) {
-          resolvedNodeId = historyData.lastClaim.nodeId;
-        }
-      }
-
-      // Fetch node info
-      if (resolvedNodeId) {
-        var nodeData = await fetchNodeInfo(resolvedNodeId);
-        setNodeInfo(nodeData);
-        
+      // If wallet provided, get node info by wallet first
+      if (wallet && !nodeId) {
+        const nodeData = await fetchNodeInfo(wallet);
         if (nodeData && nodeData.node) {
-          resolvedWallet = nodeData.node.wallet || resolvedWallet;
-          
-          // Fetch mining status
-          var miningData = await fetchMiningStatus(resolvedNodeId);
-          setMiningStatus(miningData);
+          setNodeInfo(nodeData);
+          resolvedNodeId = nodeData.node.nodeId;
+          resolvedWallet = nodeData.node.wallet;
+          setLoading(false);
+        } else {
+          // Wallet not found in nodes - show error
+          setError('No node found for this wallet address. Please check the address and try again.');
+          setLoading(false);
+          setClaimLoading(false);
+          setSearchPerformed(true);
+          return;
         }
       }
 
-      // Fetch token data and mining debug if we have wallet
-      if (resolvedWallet) {
-        // Fetch claim history if not already fetched
-        if (!claimHistory && !wallet) {
-          var claimData = await fetchClaimHistory(resolvedWallet);
-          setClaimHistory(claimData);
+      // Fetch node info by nodeId
+      if (nodeId && !wallet) {
+        const nodeData = await fetchNodeInfo(nodeId);
+        if (nodeData && nodeData.node) {
+          setNodeInfo(nodeData);
+          resolvedWallet = nodeData.node.wallet;
+          setLoading(false);
+        } else {
+          setError('Node not found. Please check the Node ID and try again.');
+          setLoading(false);
+          setClaimLoading(false);
+          setSearchPerformed(true);
+          return;
         }
-        
-        // Fetch Etherscan token data (cached for 5 min)
-        var tokenInfo = await fetchTokenData(resolvedWallet);
+      }
+
+      // Fetch mining status if we have nodeId
+      if (resolvedNodeId) {
+        const miningData = await fetchMiningStatus(resolvedNodeId);
+        setMiningStatus(miningData);
+      }
+
+      // Fetch token data and claim history if we have wallet
+      if (resolvedWallet) {
+        const [claimData, tokenInfo, debugInfo] = await Promise.all([
+          fetchClaimHistory(resolvedWallet),
+          fetchTokenData(resolvedWallet),
+          fetchMiningDebug(resolvedWallet)
+        ]);
+        setClaimHistory(claimData);
         setTokenData(tokenInfo);
-        
-        // Fetch mining debug
-        var debugInfo = await fetchMiningDebug(resolvedWallet);
         setMiningDebug(debugInfo);
       }
 
       setCurrentNodeId(resolvedNodeId);
       setCurrentWallet(resolvedWallet);
       setSearchPerformed(true);
+      setClaimLoading(false);
     } catch (err) {
       console.error('Error loading data:', err);
       if (!isRefresh) {
         setError(err.message);
       }
+      setLoading(false);
+      setClaimLoading(false);
     } finally {
       setLoading(false);
       if (isRefresh) isRefreshing.current = false;
     }
-  }, [claimHistory]);
+  }, []);
 
-  var handleSearch = function(nodeId, wallet) {
+  // handleSearch receives TWO parameters: nodeId and wallet
+  const handleSearch = (nodeId, wallet) => {
     loadData(nodeId, wallet, false);
   };
 
-  var handleRefresh = function() {
+  const handleRefresh = () => {
     if (currentNodeId || currentWallet) {
       loadData(currentNodeId, currentWallet, true);
     }
   };
 
-  var isDark = theme === 'dark';
+  const isDark = theme === 'dark';
 
-  return React.createElement(ThemeContext.Provider, { value: { theme: theme, toggleTheme: toggleTheme } },
-    React.createElement('div', { className: isDark ? 'min-h-screen bg-dark-900 text-white' : 'min-h-screen bg-gray-50 text-gray-900' },
-      React.createElement(Header, null),
-      React.createElement('main', { className: 'container mx-auto px-4 max-w-7xl py-8' },
-        React.createElement(NodeSearch, { onSearch: handleSearch, loading: loading }),
-        
-        searchPerformed && !loading && React.createElement(RefreshTimer, { onRefresh: handleRefresh, interval: 69 }),
-        
-        !searchPerformed && React.createElement('div', { className: isDark ? 'card text-center py-16' : 'card text-center py-16 bg-white border-gray-200' },
-          React.createElement(Search, { className: isDark ? 'w-16 h-16 mx-auto mb-4 text-dark-600' : 'w-16 h-16 mx-auto mb-4 text-gray-300' }),
-          React.createElement('h3', { className: isDark ? 'text-xl font-display font-semibold text-white mb-2' : 'text-xl font-display font-semibold text-gray-900 mb-2' }, 'Welcome to Netrum Dashboard'),
-          React.createElement('p', { className: isDark ? 'text-dark-400' : 'text-gray-500' }, 'Enter your Node ID or Wallet Address above to view your node statistics')
-        ),
-        
-        loading && React.createElement('div', { className: isDark ? 'card text-center py-16' : 'card text-center py-16 bg-white border-gray-200' },
-          React.createElement('div', { className: 'w-12 h-12 border-4 border-netrum-500 border-t-transparent rounded-full animate-spin mx-auto mb-4' }),
-          React.createElement('p', { className: isDark ? 'text-dark-400' : 'text-gray-500' }, 'Loading dashboard data...')
-        ),
-        
-        error && React.createElement(ErrorMessage, { error: error, onRetry: handleRefresh }),
-        
-        searchPerformed && !loading && React.createElement('div', { className: 'space-y-6 animate-fade-in' },
-          React.createElement(NetworkStats, { stats: stats, activeNodes: activeNodes }),
-          React.createElement(StatsGrid, { nodeInfo: nodeInfo, claimHistory: claimHistory, tokenData: tokenData }),
-          React.createElement(PerformanceChart, { nodeInfo: nodeInfo }),
-          React.createElement('div', { className: 'grid grid-cols-1 lg:grid-cols-2 gap-6' },
-            React.createElement(NodeInfo, { nodeInfo: nodeInfo }),
-            React.createElement(MiningStatus, { miningStatus: miningStatus, nodeInfo: nodeInfo, miningDebug: miningDebug, tokenData: tokenData })
-          ),
-          React.createElement('div', { className: 'grid grid-cols-1 lg:grid-cols-2 gap-6' },
-            React.createElement(ClaimHistory, { claimHistory: claimHistory, nodeInfo: nodeInfo, miningStatus: miningStatus, tokenData: tokenData }),
-            React.createElement(LiveLog, { nodeInfo: nodeInfo, miningStatus: miningStatus })
-          )
-        )
-      ),
-      React.createElement(Footer, null)
-    )
+  return (
+    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+      <div className={isDark ? 'min-h-screen bg-dark-900 text-white' : 'min-h-screen bg-gray-50 text-gray-900'}>
+        <Header />
+        <main className="container mx-auto px-4 max-w-7xl py-8">
+          <NodeSearch onSearch={handleSearch} loading={loading} />
+          
+          {searchPerformed && !loading && (
+            <RefreshTimer onRefresh={handleRefresh} interval={780} />
+          )}
+          
+          {!searchPerformed && (
+            <div className={isDark ? 'card text-center py-16' : 'card text-center py-16 bg-white border-gray-200'}>
+              <Search className={isDark ? 'w-16 h-16 mx-auto mb-4 text-dark-600' : 'w-16 h-16 mx-auto mb-4 text-gray-300'} />
+              <h3 className={isDark ? 'text-xl font-display font-semibold text-white mb-2' : 'text-xl font-display font-semibold text-gray-900 mb-2'}>Welcome to Netrum Dashboard</h3>
+              <p className={isDark ? 'text-dark-400' : 'text-gray-500'}>Enter your Node ID or Wallet Address above to view your node statistics</p>
+            </div>
+          )}
+          
+          {loading && (
+            <div className={isDark ? 'card text-center py-16' : 'card text-center py-16 bg-white border-gray-200'}>
+              <div className="w-12 h-12 border-4 border-netrum-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+              <p className={isDark ? 'text-dark-400' : 'text-gray-500'}>Loading dashboard data...</p>
+            </div>
+          )}
+          
+          {error && <ErrorMessage message={error} />}
+          
+          {searchPerformed && !loading && !error && nodeInfo && (
+            <div className="space-y-6 animate-fade-in">
+              <NetworkStats stats={stats} activeNodes={activeNodes} />
+              <StatsGrid nodeInfo={nodeInfo} claimHistory={claimHistory} tokenData={tokenData} claimLoading={claimLoading} />
+              <PerformanceChart nodeInfo={nodeInfo} tokenData={tokenData} />
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <NodeInfo nodeInfo={nodeInfo} tokenOverview={tokenOverview} />
+                <MiningStatus miningStatus={miningStatus} nodeInfo={nodeInfo} miningDebug={miningDebug} tokenData={tokenData} />
+              </div>
+              <ClaimHistory claimHistory={claimHistory} nodeInfo={nodeInfo} miningStatus={miningStatus} tokenData={tokenData} miningDebug={miningDebug} loading={claimLoading} />
+            </div>
+          )}
+        </main>
+        <Footer />
+      </div>
+    </ThemeContext.Provider>
   );
 }
 

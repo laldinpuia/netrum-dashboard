@@ -1,73 +1,128 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
-  <!-- Primary Meta Tags -->
-  <title>Netrum AI | Node Dashboard</title>
-  <meta name="title" content="Netrum AI | Node Dashboard">
-  <meta name="description" content="Real-time monitoring dashboard for Netrum Lite Nodes on Base Network. Track your node status, mining progress, claim history, and performance analytics.">
-  <meta name="keywords" content="Netrum, Netrum AI, NPT Token, Node Dashboard, Base Network, Crypto Mining, DePIN, Web3, Blockchain Node, Node Monitoring">
-  <meta name="author" content="D.i.PY">
-  <meta name="robots" content="index, follow">
-  <link rel="canonical" href="https://dipy.me/">
-  
-  <!-- Open Graph / Facebook -->
-  <meta property="og:type" content="website">
-  <meta property="og:url" content="https://dipy.me/">
-  <meta property="og:title" content="Netrum AI | Node Dashboard">
-  <meta property="og:description" content="Real-time monitoring dashboard for Netrum Lite Nodes on Base Network. Track your node status, mining progress, claim history, and performance analytics.">
-  <meta property="og:image" content="https://dipy.me/og-image.png">
-  <meta property="og:site_name" content="Netrum AI Node Dashboard">
-  <meta property="og:locale" content="en_US">
-  
-  <!-- Twitter -->
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:url" content="https://dipy.me/">
-  <meta name="twitter:title" content="Netrum AI | Node Dashboard">
-  <meta name="twitter:description" content="Real-time monitoring dashboard for Netrum Lite Nodes on Base Network. Track your node status, mining progress, claim history, and performance analytics.">
-  <meta name="twitter:image" content="https://dipy.me/og-image.png">
-  <meta name="twitter:creator" content="@BlockClaimed">
-  
-  <!-- Favicon -->
-  <link rel="icon" type="image/svg+xml" href="/netrum-logo.svg">
-  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-  
-  <!-- Theme Color -->
-  <meta name="theme-color" content="#f97316">
-  <meta name="msapplication-TileColor" content="#0f172a">
-  
-  <!-- Structured Data -->
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "WebApplication",
-    "name": "Netrum AI Node Dashboard",
-    "description": "Real-time monitoring dashboard for Netrum Lite Nodes on Base Network",
-    "url": "https://dipy.me",
-    "applicationCategory": "Blockchain",
-    "operatingSystem": "Web Browser",
-    "author": {
-      "@type": "Person",
-      "name": "D.i.PY",
-      "url": "https://github.com/laldinpuia"
-    },
-    "offers": {
-      "@type": "Offer",
-      "price": "0",
-      "priceCurrency": "USD"
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- Primary Meta Tags -->
+    <title>Netrum AI Node Dashboard | Real-Time Mining Monitor & Analytics</title>
+    <meta name="title" content="Netrum AI Node Dashboard | Real-Time Mining Monitor & Analytics" />
+    <meta name="description" content="Monitor your Netrum Lite Node in real-time. Track mining progress, NPT claims, wallet balance, and performance analytics on Base Network. Free node dashboard with PDF export." />
+    <meta name="keywords" content="Netrum, Netrum AI, Netrum Dashboard, NPT Token, Netrum Node, Netrum Mining, Base Network, Crypto Mining Dashboard, Node Monitor, NPT Claims, Netrum Lite Node, DePIN, Decentralized Infrastructure, Web3 Dashboard, Blockchain Node Monitor" />
+    <meta name="author" content="D.i.PY" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="googlebot" content="index, follow" />
+    <meta name="bingbot" content="index, follow" />
+    <link rel="canonical" href="https://dipy.me/" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://dipy.me/" />
+    <meta property="og:title" content="Netrum AI Node Dashboard | Real-Time Mining Monitor" />
+    <meta property="og:description" content="Monitor your Netrum Lite Node in real-time. Track mining progress, NPT claims, wallet balance, and performance analytics on Base Network." />
+    <meta property="og:image" content="https://dipy.me/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Netrum AI Node Dashboard Preview" />
+    <meta property="og:site_name" content="Netrum Dashboard" />
+    <meta property="og:locale" content="en_US" />
+    
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://dipy.me/" />
+    <meta name="twitter:title" content="Netrum AI Node Dashboard | Real-Time Mining Monitor" />
+    <meta name="twitter:description" content="Monitor your Netrum Lite Node in real-time. Track mining progress, NPT claims, wallet balance, and performance analytics on Base Network." />
+    <meta name="twitter:image" content="https://dipy.me/og-image.png" />
+    <meta name="twitter:site" content="@BlockClaimed" />
+    <meta name="twitter:creator" content="@BlockClaimed" />
+    
+    <!-- Theme & Icons -->
+    <meta name="theme-color" content="#f97316" />
+    <meta name="msapplication-TileColor" content="#f97316" />
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <link rel="apple-touch-icon" href="/logo.png" />
+    
+    <!-- Preconnect for Performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://node.netrumlabs.dev" />
+    <link rel="preconnect" href="https://api.etherscan.io" />
+    
+    <!-- DNS Prefetch -->
+    <link rel="dns-prefetch" href="https://api.coingecko.com" />
+    
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Netrum AI Node Dashboard",
+      "description": "Real-time monitoring dashboard for Netrum Lite Nodes on Base Network. Track mining progress, NPT claims, and performance analytics.",
+      "url": "https://dipy.me",
+      "applicationCategory": "Blockchain Tool",
+      "operatingSystem": "Web Browser",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "author": {
+        "@type": "Person",
+        "name": "D.i.PY",
+        "url": "https://twitter.com/BlockClaimed"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "D.i.PY",
+        "url": "https://dipy.me"
+      },
+      "screenshot": "https://dipy.me/og-image.png",
+      "softwareVersion": "1.1.2",
+      "datePublished": "2025-07-01",
+      "dateModified": "2025-12-25",
+      "keywords": "Netrum, NPT, Node Dashboard, Mining Monitor, Base Network, DePIN, Crypto Dashboard"
     }
-  }
-  </script>
-  
-  <!-- Preconnect for performance -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-</head>
-<body>
-  <div id="root"></div>
-  <script type="module" src="/src/main.jsx"></script>
-</body>
+    </script>
+    
+    <!-- Additional Structured Data - BreadcrumbList -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://dipy.me"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Node Dashboard",
+          "item": "https://dipy.me"
+        }
+      ]
+    }
+    </script>
+    
+    <!-- Organization Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "Netrum Labs",
+      "url": "https://netrumlabs.com",
+      "logo": "https://dipy.me/logo.png",
+      "sameAs": [
+        "https://twitter.com/NetrumAI",
+        "https://discord.gg/netrum"
+      ]
+    }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
 </html>

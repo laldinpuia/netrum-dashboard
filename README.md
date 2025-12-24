@@ -3,7 +3,7 @@
 <div align="center">
 
 ![Netrum Dashboard](https://img.shields.io/badge/Netrum-Dashboard-orange?style=for-the-badge)
-![Version](https://img.shields.io/badge/version-1.0.9-blue?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-1.1.2-blue?style=for-the-badge)
 ![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)
 ![Node.js](https://img.shields.io/badge/Node.js-20+-339933?style=for-the-badge&logo=node.js)
 ![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react)
@@ -19,7 +19,7 @@
 ## ✨ Features
 
 ### Core Monitoring
-- **Real-time Node Monitoring** — Track node status, uptime, sync state with live updates every 69 seconds
+- **Real-time Node Monitoring** — Track node status, uptime, sync state with live updates every 13 minutes
 - **Mining Operations Dashboard** — View mining progress, session mined NPT, mining speed, and wallet balance
 - **Smart Contract Integration** — Direct integration with Netrum mining contract on Base Network
 - **Etherscan V2 API Integration** — Accurate claim history with on-chain verification
@@ -27,20 +27,21 @@
 ### Analytics & Visualization
 - **Performance Analytics** — Health score calculation, sync count, and uptime rate metrics
 - **Requirements Comparison** — Side-by-side view of minimum requirements vs actual system specs
-- **Claim History Tracking** — Complete transaction history with export capabilities
+- **Claims History Tracking** — Complete transaction history with export capabilities
+- **Claims Analytics Chart** — Visual bar charts with 7 Days, Monthly, and Yearly views
 - **Network Statistics** — Global overview of total nodes, active nodes, and network tasks
 
 ### User Experience
 - **Dark/Light Mode** — Toggle between themes with persistent preference
 - **Responsive Design** — Fully functional on desktop, tablet, and mobile devices
 - **Auto-refresh with Timer** — Visual countdown with pause/resume controls
-- **PDF Export** — Generate professional reports with Netrum branding
-- **SEO Optimized** — Meta tags, Open Graph, Twitter Cards, and structured data
+- **PDF Export** — Generate professional reports with NPT values on chart bars
+- **Dual Search** — Search by Node ID or Wallet Address with error handling
 
 ### Technical Features
 - **Background Node Fetching** — Non-blocking API calls with intelligent caching
 - **Rate Limit Compliance** — Server-side caching to respect API limits
-- **Flexible Search** — Search by Node ID or Wallet Address
+- **Loading States** — Spinner indicators for async data fetching
 - **Live Activity Log** — Real-time event stream with claim status indicators
 
 ---
@@ -126,11 +127,12 @@ pm2 startup
 |----------|--------|-------------|-------|
 | `/api/stats` | GET | Network statistics | 5 min |
 | `/api/nodes/active` | GET | Active nodes list | 5 min |
-| `/api/node/:nodeId` | GET | Node details & metrics | 5 min |
+| `/api/node/:identifier` | GET | Node details (nodeId or wallet) | 5 min |
 | `/api/mining/:nodeId` | GET | Mining status & contract data | 60s |
 | `/api/mining-debug/:wallet` | GET | Real-time mining debug info | 60s |
-| `/api/claim/:wallet/history` | GET | Claim history from Etherscan | 5 min |
-| `/api/tokens/:wallet` | GET | Token transfer data | 5 min |
+| `/api/claim/:wallet/history` | GET | Claim history from Etherscan | 13 min |
+| `/api/tokens/:wallet` | GET | Token transfer data | 13 min |
+| `/api/token-overview` | GET | NPT token max supply | 13 min |
 | `/api/health` | GET | Server health check | — |
 
 ---
@@ -151,8 +153,7 @@ netrum-dashboard/
 │   │   ├── PerformanceChart.jsx  # Analytics & requirements
 │   │   ├── NodeInfo.jsx      # Node details & system metrics
 │   │   ├── MiningStatus.jsx  # Mining monitor & progress
-│   │   ├── ClaimHistory.jsx  # Transaction history table
-│   │   ├── LiveLog.jsx       # Activity feed
+│   │   ├── ClaimHistory.jsx  # Transaction history & chart
 │   │   ├── RefreshTimer.jsx  # Auto-refresh countdown
 │   │   └── Footer.jsx        # Credits & social links
 │   ├── App.jsx               # Main application logic
@@ -161,7 +162,7 @@ netrum-dashboard/
 ├── public/
 │   ├── logo.png              # Netrum logo
 │   └── netrum-logo.svg       # SVG variant
-├── index.html                # HTML template with SEO
+├── index.html                # HTML template
 ├── package.json
 ├── vite.config.js
 ├── tailwind.config.js
@@ -172,26 +173,42 @@ netrum-dashboard/
 
 ## 📋 Changelog
 
-### v1.0.9 (Current)
+### v1.1.2 (Current)
+**UI Polish & Grammar Fixes**
+- Renamed few Title Headers
+- Changed Download speed icon from Wifi to Download icon
+- Consistent terminology across components
+
+### v1.1.1
+**Claims Analytics Enhancement**
+- Added NPT values displayed on top of chart bars (white font)
+- Monthly view now shows all 12 months of current year
+- Chart bar sizing auto-adjusts based on data density
+- PDF export includes NPT values on chart bars
+
+### v1.1.0
+**Wallet Search & Loading States**
+- Fixed wallet address search functionality
+- Dual-parameter search handler (nodeId, wallet separation)
+- Added loading spinners for Claims History and StatsGrid
+- Error messages for invalid node IDs and wallet addresses
+- Mining progress calculated from mined tokens (3.7 NPT max per 24h cycle)
+- Current Mining Session timestamp from last claim time
+- NPT Token Overview with max supply from Etherscan API
+- Refresh interval increased to 780 seconds (13 minutes)
+
+### v1.0.9
 **API Architecture Overhaul & Performance Optimization**
 - Migrated to new Netrum API structure (`/nodes?limit=2000` endpoint)
 - Implemented background node fetching with 5-minute cache
 - Added graceful fallbacks for API failures
-- Increased refresh interval to 69 seconds for rate limit compliance
 - Enhanced timeout handling (30-60 second timeouts)
 
 **UI/UX Improvements**
-- Redesigned Requirements Status with dual-box layout (Min Requirements + Actual Specs)
+- Redesigned Requirements Status with dual-box layout
 - Added TTS Power status indicator to System Metrics
 - Fixed Mining Monitor timestamp labels
 - Updated Live Activity Log with "First Mining Started" event
-
-**SEO Implementation**
-- Added comprehensive meta tags (description, keywords, author)
-- Implemented Open Graph tags for social sharing
-- Added Twitter Card support
-- Included JSON-LD structured data
-- Added canonical URL and theme color
 
 ### v1.0.8
 **Mining Debug Integration**
@@ -272,13 +289,13 @@ NODE_ENV=production
 Edit `src/App.jsx` to modify default behavior:
 ```javascript
 // Default refresh interval (seconds)
-const REFRESH_INTERVAL = 69;
+const REFRESH_INTERVAL = 780;
 
 // Cache durations in server/index.js
 const CACHE_TTL = {
   nodes: 300,      // 5 minutes
   mining: 60,      // 1 minute
-  tokens: 300      // 5 minutes
+  tokens: 780      // 13 minutes
 };
 ```
 

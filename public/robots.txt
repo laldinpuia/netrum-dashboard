@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://dipy.me/sitemap.xml
+
+# Crawl-delay for politeness
+Crawl-delay: 1
+
+# Block API endpoints from indexing
+Disallow: /api/

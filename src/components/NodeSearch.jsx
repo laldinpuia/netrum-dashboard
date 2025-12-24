@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Search, AlertCircle } from 'lucide-react';
+import { Search, AlertCircle, Loader } from 'lucide-react';
 import { useTheme } from '../App';
 
-function NodeSearch({ onSearch, defaultNodeId, defaultWallet }) {
+function NodeSearch({ onSearch, loading }) {
   const { theme } = useTheme();
   const [searchInput, setSearchInput] = useState('');
   const [searchError, setSearchError] = useState('');
@@ -20,10 +20,10 @@ function NodeSearch({ onSearch, defaultNodeId, defaultWallet }) {
 
     // Determine if input is wallet address or node ID
     if (input.startsWith('0x') && input.length === 42) {
-      // It's a wallet address
+      // It's a wallet address - pass empty nodeId, wallet as second param
       onSearch('', input);
     } else if (input.includes('.base.eth') || input.startsWith('netrum.')) {
-      // It's a node ID
+      // It's a node ID - pass nodeId, empty wallet
       onSearch(input, '');
     } else {
       // Try as node ID first
@@ -53,6 +53,7 @@ function NodeSearch({ onSearch, defaultNodeId, defaultWallet }) {
               }}
               placeholder="Enter Node ID or Wallet Address..."
               className={`w-full ${theme === 'dark' ? 'bg-dark-800 border-dark-700 text-dark-100 placeholder-dark-500' : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-400'} border rounded-lg px-4 py-3 pl-12 focus:outline-none focus:border-netrum-500 focus:ring-1 focus:ring-netrum-500 transition-all duration-200 font-mono text-sm`}
+              disabled={loading}
             />
           </div>
           
@@ -68,9 +69,22 @@ function NodeSearch({ onSearch, defaultNodeId, defaultWallet }) {
           <p className={`text-xs ${theme === 'dark' ? 'text-dark-500' : 'text-gray-400'}`}>
             Tip: You can search using either your Node ID or your wallet address
           </p>
-          <button type="submit" className="btn-primary flex items-center justify-center gap-2">
-            <Search className="w-4 h-4" />
-            Search Node
+          <button 
+            type="submit" 
+            className="btn-primary flex items-center justify-center gap-2"
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <Loader className="w-4 h-4 animate-spin" />
+                Searching...
+              </>
+            ) : (
+              <>
+                <Search className="w-4 h-4" />
+                Search Node
+              </>
+            )}
           </button>
         </div>
       </form>

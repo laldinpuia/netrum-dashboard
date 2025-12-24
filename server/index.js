@@ -35,24 +35,26 @@ async function fetchWithTimeout(url, timeout = 30000) {
   }
 }
 
-function fetchNodesBackground() {
+async function fetchNodesBackground() {
   if (nodesCache.loading) return;
   if (Date.now() - nodesCache.lastFetch < 300000 && nodesCache.data) return;
   
   nodesCache.loading = true;
   console.log('Background: Fetching nodes...');
   
-  fetchWithTimeout(NETRUM_API + '/nodes?limit=2000', 90000)
-    .then(res => res.json())
-    .then(data => {
-      if (data.success && data.nodes) {
-        nodesCache.data = data;
-        nodesCache.lastFetch = Date.now();
-        console.log('Background: Fetched ' + data.nodes.length + ' nodes');
-      }
-    })
-    .catch(err => console.error('Background fetch error:', err.message))
-    .finally(() => { nodesCache.loading = false; });
+  try {
+    const res = await fetchWithTimeout(NETRUM_API + '/nodes?limit=2000', 90000);
+    const data = await res.json();
+    if (data.success && data.nodes) {
+      nodesCache.data = data;
+      nodesCache.lastFetch = Date.now();
+      console.log('Background: Fetched ' + data.nodes.length + ' nodes');
+    }
+  } catch (err) {
+    console.error('Background fetch error:', err.message);
+  } finally {
+    nodesCache.loading = false;
+  }
 }
 
 fetchNodesBackground();
@@ -64,6 +66,26 @@ function findNodeFromCache(identifier) {
   return nodesCache.data.nodes.find(n => 
     n.nodeId.toLowerCase() === lower || n.wallet.toLowerCase() === lower
   );
+}
+
+async function ensureNodesLoaded() {
+  if (!nodesCache.data || !nodesCache.data.nodes) {
+    console.log('Cache empty, fetching nodes...');
+    try {
+      const res = await fetchWithTimeout(NETRUM_API + '/nodes?limit=2000', 90000);
+      const data = await res.json();
+      if (data.success && data.nodes) {
+        nodesCache.data = data;
+        nodesCache.lastFetch = Date.now();
+        console.log('Loaded ' + data.nodes.length + ' nodes');
+        return true;
+      }
+    } catch (err) {
+      console.error('Failed to load nodes:', err.message);
+      return false;
+    }
+  }
+  return true;
 }
 
 async function fetchMiningDebug(wallet) {
@@ -91,15 +113,42 @@ async function fetchTokenTransfers(wallet) {
     const url = ETHERSCAN_API + '?chainid=' + BASE_CHAINID + '&module=account&action=tokentx&contractaddress=' + NPT_CONTRACT + '&address=' + wallet + '&page=1&offset=1000&sort=desc&apikey=' + ETHERSCAN_KEY;
     const response = await fetchWithTimeout(url, 15000);
     const data = await response.json();
-    if (data.status === '1') cache.set(cacheKey, data, 300);
+    if (data.status === '1') cache.set(cacheKey, data, 780);
     return data;
   } catch (error) {
     return null;
   }
 }
 
-app.get('/api/stats', (req, res) => {
-  fetchNodesBackground();
+async function fetchTokenOverviewData() {
+  const cacheKey = 'token_overview';
+  const cached = cache.get(cacheKey);
+  if (cached) return cached;
+
+  try {
+    const supplyUrl = ETHERSCAN_API + '?chainid=' + BASE_CHAINID + '&module=stats&action=tokensupply&contractaddress=' + NPT_CONTRACT + '&apikey=' + ETHERSCAN_KEY;
+    const supplyRes = await fetchWithTimeout(supplyUrl, 15000);
+    const supplyData = await supplyRes.json();
+
+    const overview = {
+      maxSupply: supplyData.status === '1' ? parseFloat(supplyData.result) / 1e18 : 336751.15,
+      holders: 999,
+      transfers: 23199,
+      symbol: 'NPT',
+      name: 'Netrum Power Token'
+    };
+
+    cache.set(cacheKey, overview, 780);
+    return overview;
+  } catch (error) {
+    console.error('Token overview error:', error.message);
+    return { maxSupply: 336751.15, holders: 999, transfers: 23199, symbol: 'NPT', name: 'Netrum Power Token' };
+  }
+}
+
+app.get('/api/stats', async (req, res) => {
+  await ensureNodesLoaded();
+  
   if (nodesCache.data && nodesCache.data.nodes) {
     const nodes = nodesCache.data.nodes;
     const active = nodes.filter(n => n.nodeStatus === 'Active').length;
@@ -110,8 +159,9 @@ app.get('/api/stats', (req, res) => {
   }
 });
 
-app.get('/api/nodes/active', (req, res) => {
-  fetchNodesBackground();
+app.get('/api/nodes/active', async (req, res) => {
+  await ensureNodesLoaded();
+  
   if (nodesCache.data && nodesCache.data.nodes) {
     const active = nodesCache.data.nodes.filter(n => n.nodeStatus === 'Active');
     res.json({ count: active.length, nodes: active.slice(0, 10) });
@@ -120,9 +170,16 @@ app.get('/api/nodes/active', (req, res) => {
   }
 });
 
-app.get('/api/node/:nodeId', (req, res) => {
-  fetchNodesBackground();
-  const node = findNodeFromCache(req.params.nodeId);
+app.get('/api/node/:identifier', async (req, res) => {
+  const identifier = req.params.identifier;
+  
+  // Ensure nodes are loaded
+  await ensureNodesLoaded();
+  
+  // Find node
+  const node = findNodeFromCache(identifier);
+  
+  // Return result - node will be null if not found (for both wallet and nodeId)
   res.json({ node: node || null });
 });
 
@@ -190,18 +247,23 @@ app.get('/api/tokens/:wallet', async (req, res) => {
   let total = 0;
   claims.forEach(c => total += parseFloat(c.value) / 1e18);
 
-  res.json({ totalClaims: claims.length, totalNptClaimed: total, recentClaims: claims.slice(0, 10) });
+  res.json({ totalClaims: claims.length, totalNptClaimed: total, recentClaims: claims });
 });
 
 app.get('/api/mining-debug/:wallet', async (req, res) => {
   res.json(await fetchMiningDebug(req.params.wallet));
 });
 
+app.get('/api/token-overview', async (req, res) => {
+  res.json(await fetchTokenOverviewData());
+});
+
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'ok', 
-    version: '1.0.9', 
+    version: '1.1.2', 
     nodesLoaded: nodesCache.data ? nodesCache.data.nodes.length : 0,
+    cacheLoading: nodesCache.loading,
     timestamp: new Date().toISOString() 
   });
 });
@@ -211,4 +273,4 @@ app.get('*', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log('Netrum Dashboard v1.0.9 running on port ' + PORT));
+app.listen(PORT, () => console.log('Netrum Dashboard v1.1.0 running on port ' + PORT));
