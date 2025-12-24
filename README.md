@@ -1,6 +1,6 @@
-# Netrum AI Node Dashboard
-
 <div align="center">
+
+# Netrum AI Node Dashboard
 
 ![Netrum Dashboard](https://img.shields.io/badge/Netrum-Dashboard-orange?style=for-the-badge)
 ![Version](https://img.shields.io/badge/version-1.1.2-blue?style=for-the-badge)
@@ -141,28 +141,28 @@ pm2 startup
 ```
 netrum-dashboard/
 ├── server/
-│   └── index.js              # Express backend with caching
+│   └── index.js                  # Express backend with caching
 ├── src/
 │   ├── api/
-│   │   └── netrum.js         # API client & utilities
+│   │   └── netrum.js             # API client & utilities
 │   ├── components/
-│   │   ├── Header.jsx        # App header with theme toggle
-│   │   ├── NodeSearch.jsx    # Search input component
-│   │   ├── NetworkStats.jsx  # Global network overview
-│   │   ├── StatsGrid.jsx     # Quick stats cards
+│   │   ├── Header.jsx            # App header with theme toggle
+│   │   ├── NodeSearch.jsx        # Search input component
+│   │   ├── NetworkStats.jsx      # Global network overview
+│   │   ├── StatsGrid.jsx         # Quick stats cards
 │   │   ├── PerformanceChart.jsx  # Analytics & requirements
-│   │   ├── NodeInfo.jsx      # Node details & system metrics
-│   │   ├── MiningStatus.jsx  # Mining monitor & progress
-│   │   ├── ClaimHistory.jsx  # Transaction history & chart
-│   │   ├── RefreshTimer.jsx  # Auto-refresh countdown
-│   │   └── Footer.jsx        # Credits & social links
-│   ├── App.jsx               # Main application logic
-│   ├── main.jsx              # React entry point
-│   └── index.css             # Global styles & Tailwind
+│   │   ├── NodeInfo.jsx          # Node details & system metrics
+│   │   ├── MiningStatus.jsx      # Mining monitor & progress
+│   │   ├── ClaimHistory.jsx      # Transaction history & chart
+│   │   ├── RefreshTimer.jsx      # Auto-refresh countdown
+│   │   └── Footer.jsx            # Credits & social links
+│   ├── App.jsx                   # Main application logic
+│   ├── main.jsx                  # React entry point
+│   └── index.css                 # Global styles & Tailwind
 ├── public/
-│   ├── logo.png              # Netrum logo
-│   └── netrum-logo.svg       # SVG variant
-├── index.html                # HTML template
+│   ├── logo.png                  # Netrum logo
+│   └── netrum-logo.svg           # SVG variant
+├── index.html                    # HTML template
 ├── package.json
 ├── vite.config.js
 ├── tailwind.config.js
@@ -176,12 +176,12 @@ netrum-dashboard/
 ### v1.1.2 (Current)
 **UI Polish & Grammar Fixes**
 - Renamed few Title Headers
-- Changed Download speed icon from Wifi to Download icon
+- Changed Icons
 - Consistent terminology across components
 
 ### v1.1.1
 **Claims Analytics Enhancement**
-- Added NPT values displayed on top of chart bars (white font)
+- Added NPT values displayed on top of chart bars
 - Monthly view now shows all 12 months of current year
 - Chart bar sizing auto-adjusts based on data density
 - PDF export includes NPT values on chart bars
