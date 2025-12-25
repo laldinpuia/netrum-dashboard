@@ -393,9 +393,9 @@ export async function exportToPDF({ nodeInfo, miningStatus, claimHistory, tokenD
   pdf.setTextColor(...colors.text);
   pdf.text('Netrum AI Node Dashboard', pageWidth / 2, footerY + 5, { align: 'center' });
   
-  // Line 2: "Built by D.i.PY™ | https://dipy.me" - orange, centered
+  // Line 2: "Built by D.i.PY™ | https://dipy.me" - muted gray, centered
   pdf.setFontSize(6);
-  pdf.setTextColor(...colors.orange);
+  pdf.setTextColor(...colors.textMuted);
   pdf.text('Built by D.i.PY\u2122 | https://dipy.me', pageWidth / 2, footerY + 10, { align: 'center' });
   
   // "Generated: timestamp" - muted gray, bottom right
