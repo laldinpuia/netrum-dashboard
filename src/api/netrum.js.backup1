@@ -142,61 +142,60 @@ export async function exportToPDF({ nodeInfo, miningStatus, claimHistory, tokenD
 
   let y = margin;
 
-  // HEADER: Logo LEFT of title (side by side layout)
-  const logoSize = 14;
-  const headerCenterX = pageWidth / 2;
-  const titleText = 'Netrum AI';
-  const subtitleText = 'Node Dashboard Report';
-  
-  // Calculate positions for centered logo + title combo
-  pdf.setFontSize(18);
-  const titleWidth = pdf.getTextWidth(titleText);
-  const totalHeaderWidth = logoSize + 4 + titleWidth; // logo + gap + title
-  const headerStartX = headerCenterX - totalHeaderWidth / 2;
-
-  // Try to load and add logo
-  let logoLoaded = false;
+  // Load and add logo
   try {
     const logoBase64 = await loadImageAsBase64('/logo.png');
     if (logoBase64) {
-      pdf.addImage(logoBase64, 'PNG', headerStartX, y, logoSize, logoSize);
-      logoLoaded = true;
+      // Add logo image centered at top (16mm x 16mm)
+      const logoSize = 16;
+      pdf.addImage(logoBase64, 'PNG', (pageWidth - logoSize) / 2, y, logoSize, logoSize);
+      y += logoSize + 4;
+    } else {
+      // Fallback: draw orange circle with N
+      pdf.setFillColor(...colors.orange);
+      pdf.circle(pageWidth / 2, y + 8, 8, 'F');
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(7);
+      pdf.text('N', pageWidth / 2, y + 10, { align: 'center' });
+      y += 20;
     }
   } catch {
-    // Fallback below
-  }
-
-  // Fallback: draw orange circle with N if logo fails
-  if (!logoLoaded) {
+    // Fallback: draw orange circle with N
     pdf.setFillColor(...colors.orange);
-    pdf.circle(headerStartX + logoSize / 2, y + logoSize / 2, logoSize / 2, 'F');
+    pdf.circle(pageWidth / 2, y + 8, 8, 'F');
     pdf.setTextColor(255, 255, 255);
-    pdf.setFontSize(8);
-    pdf.text('N', headerStartX + logoSize / 2, y + logoSize / 2 + 2, { align: 'center' });
+    pdf.setFontSize(7);
+    pdf.text('N', pageWidth / 2, y + 10, { align: 'center' });
+    y += 20;
   }
 
-  // Title "Netrum AI" to the right of logo
+  // Title
   pdf.setFontSize(18);
   pdf.setTextColor(...colors.text);
-  pdf.text(titleText, headerStartX + logoSize + 4, y + 6);
-
-  // Subtitle "Node Dashboard Report" below title
+  pdf.text('Netrum AI', pageWidth / 2, y, { align: 'center' });
+  
+  y += 6;
   pdf.setFontSize(10);
   pdf.setTextColor(...colors.textMuted);
-  pdf.text(subtitleText, headerStartX + logoSize + 4, y + 12);
+  pdf.text('Node Dashboard Report', pageWidth / 2, y, { align: 'center' });
 
-  y += logoSize + 6;
+  // Generated timestamp in top right
+  pdf.setFontSize(7);
+  pdf.setTextColor(...colors.textDark);
+  pdf.text('Generated: ' + generatedTimestamp, pageWidth - margin, margin + 5, { align: 'right' });
 
-  // Thin orange horizontal line
+  // Orange divider bar
+  y += 8;
   pdf.setFillColor(...colors.orange);
-  pdf.rect(margin, y, contentWidth, 0.5, 'F');
-  y += 6;
+  pdf.rect(margin, y, contentWidth, 1.5, 'F');
+  y += 8;
 
-  // Helper function to draw card WITHOUT orange left border
+  // Helper functions
   const drawCard = (x, yPos, w, h, title) => {
     pdf.setFillColor(...colors.card);
     pdf.roundedRect(x, yPos, w, h, 2, 2, 'F');
-    // NO orange left border
+    pdf.setFillColor(...colors.orange);
+    pdf.rect(x, yPos, 1.5, h, 'F');
     if (title) {
       pdf.setFontSize(9);
       pdf.setTextColor(...colors.orange);
@@ -298,7 +297,7 @@ export async function exportToPDF({ nodeInfo, miningStatus, claimHistory, tokenD
   y += claimHeight + 4;
 
   // Sync History Summary
-  const syncHeight = 14;
+  const syncHeight = 16;
   drawCard(margin, y, contentWidth, syncHeight, 'Sync History Summary');
   
   const activeCount = syncHistory.filter(s => s.status === 'Active' || s.meetsRequirements).length;
@@ -306,16 +305,16 @@ export async function exportToPDF({ nodeInfo, miningStatus, claimHistory, tokenD
   
   pdf.setFontSize(7);
   pdf.setTextColor(...colors.textMuted);
-  pdf.text('Recent Syncs: ' + (node.syncCount || 0), margin + 6, y + 10);
-  pdf.text('Active Syncs: ' + activeCount, margin + contentWidth / 3, y + 10);
+  pdf.text('Recent Syncs: ' + (node.syncCount || 0), margin + 6, y + 12);
+  pdf.text('Active Syncs: ' + activeCount, margin + contentWidth / 3, y + 12);
   pdf.setTextColor(...colors.green);
-  pdf.text('Uptime Rate: ' + uptimeRate + '%', margin + contentWidth * 2 / 3, y + 10);
+  pdf.text('Uptime Rate: ' + uptimeRate + '%', margin + contentWidth * 2 / 3, y + 12);
 
   y += syncHeight + 4;
 
   // Claims Chart with NPT values on bars
   if (chartData && chartData.labels && chartData.labels.length > 0) {
-    const chartHeight = 48;
+    const chartHeight = 50;
     const chartTitle = dateRange ? 'Claims History (' + dateRange + ')' : 'Claims History (Last 7 Days)';
     drawCard(margin, y, contentWidth, chartHeight, chartTitle);
 
@@ -324,7 +323,7 @@ export async function exportToPDF({ nodeInfo, miningStatus, claimHistory, tokenD
     const maxVal = Math.max(...values, 0.1);
 
     const chartX = margin + 12;
-    const chartY = y + 12;
+    const chartY = y + 14;
     const chartW = contentWidth - 24;
     const chartH = 28;
     const barCount = labels.length;
@@ -369,38 +368,33 @@ export async function exportToPDF({ nodeInfo, miningStatus, claimHistory, tokenD
     drawCard(margin, y, contentWidth, summaryHeight, 'Claims Summary');
     pdf.setFontSize(7);
     pdf.setTextColor(...colors.textMuted);
-    pdf.text('Total Claims: ' + tokens.totalClaims, margin + 6, y + 10);
+    pdf.text('Total Claims: ' + tokens.totalClaims, margin + 6, y + 11);
     pdf.setTextColor(...colors.orange);
-    pdf.text('Total NPT: ' + tokens.totalNptClaimed?.toFixed(4) + ' NPT', margin + contentWidth / 3, y + 10);
+    pdf.text('Total NPT: ' + tokens.totalNptClaimed?.toFixed(4) + ' NPT', margin + contentWidth / 3, y + 11);
     pdf.setTextColor(...colors.textMuted);
-    pdf.text('Avg/Claim: ' + (tokens.totalNptClaimed / tokens.totalClaims).toFixed(4) + ' NPT', margin + contentWidth * 2 / 3, y + 10);
+    pdf.text('Avg/Claim: ' + (tokens.totalNptClaimed / tokens.totalClaims).toFixed(4) + ' NPT', margin + contentWidth * 2 / 3, y + 11);
   }
 
-  // FOOTER - Matching CORRECTED.pdf exactly
-  const footerHeight = 16;
+  // Footer - Three part layout matching CORRECTED.pdf
+  const footerHeight = 14;
   const footerY = pageHeight - footerHeight;
   
-  // Footer background
   pdf.setFillColor(...colors.card);
   pdf.rect(0, footerY, pageWidth, footerHeight, 'F');
   
-  // Thin orange line at top of footer
-  pdf.setFillColor(...colors.orange);
-  pdf.rect(0, footerY, pageWidth, 0.5, 'F');
-  
-  // Line 1: "Netrum AI Node Dashboard" - white, centered
+  // Center: "Netrum AI Node Dashboard"
   pdf.setFontSize(8);
   pdf.setTextColor(...colors.text);
-  pdf.text('Netrum AI Node Dashboard', pageWidth / 2, footerY + 5, { align: 'center' });
+  pdf.text('Netrum AI Node Dashboard', pageWidth / 2, footerY + 6, { align: 'center' });
   
-  // Line 2: "Built by D.i.PY™ | https://dipy.me" - orange, centered
+  // Left: "Built by D.i.PY™ | https://dipy.me"
   pdf.setFontSize(6);
   pdf.setTextColor(...colors.orange);
-  pdf.text('Built by D.i.PY\u2122 | https://dipy.me', pageWidth / 2, footerY + 10, { align: 'center' });
+  pdf.text('Built by D.i.PY\u2122 | https://dipy.me', margin, footerY + 10);
   
-  // "Generated: timestamp" - muted gray, bottom right
+  // Right: "Generated: timestamp"
   pdf.setTextColor(...colors.textMuted);
-  pdf.text('Generated: ' + generatedTimestamp, pageWidth - margin, footerY + 13, { align: 'right' });
+  pdf.text('Generated: ' + generatedTimestamp, pageWidth - margin, footerY + 10, { align: 'right' });
 
   pdf.save('netrum-node-report.pdf');
 }

@@ -3,7 +3,7 @@
 # Netrum AI Node Dashboard
 
 ![Netrum Dashboard](https://img.shields.io/badge/Netrum-Dashboard-orange?style=for-the-badge)
-![Version](https://img.shields.io/badge/version-1.1.2-blue?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-1.1.3-blue?style=for-the-badge)
 ![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)
 ![Node.js](https://img.shields.io/badge/Node.js-20+-339933?style=for-the-badge&logo=node.js)
 ![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react)
@@ -35,7 +35,7 @@
 - **Dark/Light Mode** — Toggle between themes with persistent preference
 - **Responsive Design** — Fully functional on desktop, tablet, and mobile devices
 - **Auto-refresh with Timer** — Visual countdown with pause/resume controls
-- **PDF Export** — Generate professional reports with NPT values on chart bars
+- **PDF Export** — Generate professional reports with optimized A4 layout
 - **Dual Search** — Search by Node ID or Wallet Address with error handling
 
 ### Technical Features
@@ -173,7 +173,21 @@ netrum-dashboard/
 
 ## 📋 Changelog
 
-### v1.1.2 (Current)
+### v1.1.3 (Current)
+**PDF Export Layout Redesign**
+- Refactored header layout: horizontal logo-title alignment with centered positioning
+- Removed vertical orange accent borders from card containers
+- Replaced thick header separator with thin 0.5mm accent line
+- Restructured footer component with three-section layout:
+  - Primary title (centered, white)
+  - Attribution line with trademark symbol (centered, accent color)
+  - Generation timestamp (right-aligned, muted)
+- Added thin accent separator at footer top boundary
+- Removed duplicate timestamp from header section
+- Optimized card container dimensions for A4 page constraints
+- Improved text element positioning within card boundaries
+
+### v1.1.2
 **UI Polish & Grammar Fixes**
 - Renamed few Title Headers
 - Changed Icons
