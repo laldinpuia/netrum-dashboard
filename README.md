@@ -19,30 +19,30 @@
 ## ✨ Features
 
 ### Core Monitoring
-- **Real-time Node Monitoring** — Track node status, uptime, sync state with live updates every 13 minutes
-- **Mining Operations Dashboard** — View mining progress, session mined NPT, mining speed, and wallet balance
-- **Smart Contract Integration** — Direct integration with Netrum mining contract on Base Network
-- **Etherscan V2 API Integration** — Accurate claim history with on-chain verification
+- **Real-time Node Monitoring** - Track node status, uptime, sync state with live updates every 13 minutes
+- **Mining Operations Dashboard** - View mining progress, session mined NPT, mining speed and wallet balance
+- **Smart Contract Integration** - Direct integration with Netrum mining contract on Base Network
+- **Etherscan V2 API Integration** - Accurate claim history with on-chain verification
 
 ### Analytics & Visualization
-- **Performance Analytics** — Health score calculation, sync count, and uptime rate metrics
-- **Requirements Comparison** — Side-by-side view of minimum requirements vs actual system specs
-- **Claims History Tracking** — Complete transaction history with export capabilities
-- **Claims Analytics Chart** — Visual bar charts with 7 Days, Monthly, and Yearly views
-- **Network Statistics** — Global overview of total nodes, active nodes, and network tasks
+- **Performance Analytics** - Health score calculation, sync count, and uptime rate metrics
+- **Requirements Comparison** - Side-by-side view of minimum requirements vs actual system specs
+- **Claims History Tracking** - Complete transaction history with export capabilities
+- **Claims Analytics Chart** - Visual bar charts with 7 Days, Monthly and Yearly views
+- **Network Statistics** - Global overview of total nodes, active nodes and network tasks
 
 ### User Experience
-- **Dark/Light Mode** — Toggle between themes with persistent preference
-- **Responsive Design** — Fully functional on desktop, tablet, and mobile devices
-- **Auto-refresh with Timer** — Visual countdown with pause/resume controls
-- **PDF Export** — Generate professional reports with optimized A4 layout
-- **Dual Search** — Search by Node ID or Wallet Address with error handling
+- **Dark/Light Mode** - Toggle between themes with persistent preference
+- **Responsive Design** - Fully functional on desktop, tablet and mobile devices
+- **Auto-refresh with Timer** - Visual countdown with pause/resume controls
+- **PDF Export** - Generate professional reports with optimized A4 layout
+- **Dual Search** - Search by Node ID or Wallet Address with error handling
 
 ### Technical Features
-- **Background Node Fetching** — Non-blocking API calls with intelligent caching
-- **Rate Limit Compliance** — Server-side caching to respect API limits
-- **Loading States** — Spinner indicators for async data fetching
-- **Live Activity Log** — Real-time event stream with claim status indicators
+- **Background Node Fetching** - Non-blocking API calls with intelligent caching
+- **Rate Limit Compliance** - Server-side caching to respect API limits
+- **Loading States** - Spinner indicators for async data fetching
+- **Live Activity Log** - Real-time event stream with claim status indicators
 
 ---
 
